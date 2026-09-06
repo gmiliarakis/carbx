@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Tesseract from "tesseract.js";
-import { decompose, gramsPerExchange, inferGroup, parseNutritionText, scanIngredients, r0, r1, num } from "./lib/exchange.js";
+import { decompose, fromOpenFoodFacts, gramsPerExchange, inferGroupWithReason,
+  parseNutritionText, scanIngredients, r0, r1 } from "./lib/exchange.js";
 
 // One per-100 g record, filled in by hand, from a pasted label, from a photo,
 // or from Open Food Facts. Everything after that runs offline.
@@ -114,6 +115,24 @@ const CSS = `
 .of-foot{margin-top:auto; padding-top:22px; text-align:right; font-family:var(--mono);
   font-size:10.5px; letter-spacing:.06em; color:var(--muted)}
 
+.of-use{display:flex; align-items:flex-start; gap:14px; padding:11px 22px;
+  background:var(--signal-w); border-bottom:1px solid var(--line);
+  font-size:12.5px; line-height:1.5; color:#2B2F33}
+.of-use p{margin:0; max-width:92ch}
+.of-use b{font-weight:600}
+.of-use button{flex:0 0 auto; background:none; border:1px solid var(--line);
+  border-radius:2px; color:var(--muted); cursor:pointer; padding:5px 11px;
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase}
+.of-use button:hover{border-color:var(--ink); color:var(--ink)}
+.of-use button:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+@media (max-width:600px){ .of-use{flex-direction:column; gap:9px} }
+
+.of-why{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:5px; max-width:64ch}
+.of-why b{color:var(--ink); font-weight:600}
+.of-why i{font-style:normal; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+  text-transform:uppercase; border:1px solid var(--line); border-radius:2px;
+  padding:1px 5px; margin-right:6px; color:var(--muted)}
+
 .of-labrow{display:flex; align-items:center; gap:6px}
 .of-check{display:flex; align-items:center; gap:7px; margin-top:10px; font-size:12px; color:#4E5257}
 .of-check label{display:flex; align-items:center; gap:8px; cursor:pointer}
@@ -158,13 +177,22 @@ function plainFlags({ pp, na, scans }) {
   else if (na > 250) out.push({ id: "na", cls: "w", text: `Salty, ${r0(na)} mg sodium in this portion.` });
   if (pp.sugars > 15) out.push({ id: "sug", cls: "w", text: `${r1(pp.sugars)} g sugar in this portion.` });
   if (pp.sfa > 5) out.push({ id: "sfa", cls: "w", text: `${r1(pp.sfa)} g saturated fat in this portion.` });
-  if (pp.fibre < 3) out.push({ id: "fib", cls: "w", text: `Low in fibre, ${r1(pp.fibre)} g in this portion.` });
+  // Only worth saying on a food that carries carbohydrate, and only when the
+  // label actually declared fibre. Blank is unknown, not zero: flagging olive
+  // oil and chicken as low in fibre is noise that costs the real flags their
+  // weight. Half a starch exchange is the floor for calling a food a
+  // carbohydrate food at all.
+  if (pp.fibre != null && pp.cho >= 8 && pp.fibre < 3)
+    out.push({ id: "fib", cls: "w",
+      text: `Low in fibre, ${r1(pp.fibre)} g against ${r1(pp.cho)} g of carbohydrate in this portion.` });
   if (pp.k != null && pp.k > 200) out.push({ id: "k", cls: "w", text: `High in potassium, ${r0(pp.k)} mg in this portion.` });
   if (pp.p != null && pp.pro > 0 && pp.p / pp.pro > 12)
     out.push({ id: "p", cls: "w", text: `High in phosphorus for the protein it carries, ${r0(pp.p)} mg in this portion.` });
   scans.forEach((sc) => out.push({ id: "scan-" + sc.id, cls: sc.cls, text: `${sc.title}: ${sc.hits.join(", ")}.` }));
   return out;
 }
+
+const USE_NOTICE_KEY = "carbx.intended-use.v1";
 
 const BLANK = { name: "", cho: "", pro: "", fat: "", fibre: "", sugars: "", sfa: "", salt: "", k: "", p: "", kcal: "", ing: "" };
 
@@ -181,11 +209,20 @@ export default function ExchangeLookup() {
   const [results, setResults] = useState([]);
   const [unit, setUnit] = useState(15);
   const [portion, setPortion] = useState("100");
-  const [subFibre, setSubFibre] = useState(true);
   const [proTiers, setProTiers] = useState(true);
   const [override, setOverride] = useState("");
   const [ocrLang, setOcrLang] = useState("eng+nld+deu+fra+ell");
   const [detail, setDetail] = useState(false);
+  // Shown once per browser. Storage can throw or be empty, so failing to read
+  // it shows the notice rather than hiding it.
+  const [useNotice, setUseNotice] = useState(() => {
+    try { return window.localStorage.getItem(USE_NOTICE_KEY) !== "seen"; }
+    catch { return true; }
+  });
+  const dismissUseNotice = () => {
+    setUseNotice(false);
+    try { window.localStorage.setItem(USE_NOTICE_KEY, "seen"); } catch { /* storage unavailable */ }
+  };
 
   const set = (k, v) => { setRec((r) => ({ ...r, [k]: v })); setParsed(false); };
   const g = (k) => parseFloat(rec[k]) || 0;
@@ -246,12 +283,7 @@ export default function ExchangeLookup() {
   };
 
   const takeOff = (p) => {
-    const N = p.nutriments || {};
-    const s = (v) => (num(v) == null ? "" : String(num(v)));
-    setRec({ name: p.product_name || p.code, cho: s(N.carbohydrates_100g), pro: s(N.proteins_100g),
-      fat: s(N.fat_100g), fibre: s(N.fiber_100g), sugars: s(N.sugars_100g), sfa: s(N["saturated-fat_100g"]),
-      salt: s(N.salt_100g != null ? N.salt_100g : num(N.sodium_100g) != null ? N.sodium_100g * 2.5 : null),
-      k: s(N.potassium_100g), p: s(N.phosphorus_100g), kcal: s(N["energy-kcal_100g"]), ing: p.ingredients_text || "" });
+    setRec(fromOpenFoodFacts(p));
     setSrc("hand"); setParsed(true);
     setMsg("Open Food Facts is crowd-sourced and unverified. Check the figures against the pack.");
   };
@@ -261,21 +293,23 @@ export default function ExchangeLookup() {
   let view = null;
   if (hasData && size > 0) {
     const f = size / 100;
-    const pp = { cho: g("cho") * f, pro: g("pro") * f, fat: g("fat") * f, fibre: g("fibre") * f,
+    const pp = { cho: g("cho") * f, pro: g("pro") * f, fat: g("fat") * f,
+      fibre: rec.fibre === "" ? null : g("fibre") * f,
       sugars: g("sugars") * f, sfa: g("sfa") * f, salt: g("salt") * f,
       k: rec.k === "" ? null : g("k") * f, p: rec.p === "" ? null : g("p") * f,
       kcal: rec.kcal === "" ? g("cho") * 4 * f + g("pro") * 4 * f + g("fat") * 9 * f : g("kcal") * f };
-    const auto = inferGroup({ cho: g("cho"), pro: g("pro"), fat: g("fat"),
+    const why = inferGroupWithReason({ cho: g("cho"), pro: g("pro"), fat: g("fat"),
       sugars: rec.sugars === "" ? null : g("sugars"),
       fibre: rec.fibre === "" ? null : g("fibre") }, rec.name, { portionG: size, unit });
+    const auto = why.group;
     const gid = override || auto;
-    const dec = decompose(pp, unit, gid, subFibre, { proteinTiers: proTiers });
+    const dec = decompose(pp, unit, gid, { proteinTiers: proTiers });
     const per100 = { cho: g("cho"), pro: g("pro"), fat: g("fat") };
     dec.rounded = dec.rounded.map((o) => ({ ...o, gpe: gramsPerExchange(o.ref, per100) }));
     const rkcal = dec.rc * 4 + dec.rp * 4 + dec.rf * 9;
     const drift = pp.kcal > 0 ? ((rkcal - pp.kcal) / pp.kcal) * 100 : 0;
     const na = pp.salt * 400;
-    view = { pp, auto, gid, dec, rkcal, drift, na, scans: scanIngredients(rec.ing) };
+    view = { pp, auto, why, gid, dec, rkcal, drift, na, scans: scanIngredients(rec.ing) };
   }
 
   const cards = view && (
@@ -298,6 +332,19 @@ export default function ExchangeLookup() {
       <div className="of-head">
         <span className="of-title">CarbX</span>
       </div>
+
+      {useNotice && (
+        <div className="of-use" role="note">
+          <p>
+            <b>What this is.</b> A teaching and self-management aid that converts a nutrition
+            declaration into exchanges. It is not a medical device, it does not calculate insulin
+            doses, and it does not replace assessment by a dietitian or physician. Every figure
+            comes from the label you enter, so check the parsed values against the pack before
+            acting on them.
+          </p>
+          <button type="button" onClick={dismissUseNotice}>Understood</button>
+        </div>
+      )}
 
       <div className="of-grid">
         <div className="of-rail">
@@ -401,7 +448,7 @@ export default function ExchangeLookup() {
                 <input className="of-in" value={portion} inputMode="decimal" onChange={(e) => setPortion(e.target.value)} /></div>
               <div className="of-f"><span className="of-lab">CHO per unit</span>
                 <select className="of-sel" value={unit} onChange={(e) => setUnit(parseInt(e.target.value, 10))}>
-                  <option value={15}>15 g · US</option><option value={12}>12 g · BE</option><option value={10}>10 g · KE/NL</option>
+                  <option value={15}>15 g · US</option><option value={10}>10 g · NL</option>
                 </select></div>
             </div>
             <span className="of-lab of-labrow">
@@ -416,17 +463,6 @@ export default function ExchangeLookup() {
               <option value="">Auto{view ? `: ${GLABEL[view.auto]}` : ""}</option>
               {Object.entries(GLABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
-            <div className="of-check">
-              <label>
-                <input type="checkbox" checked={subFibre} onChange={(e) => setSubFibre(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
-                <span>Take fibre out of the carbs</span>
-              </label>
-              <Help label="What taking fibre out of the carbs means">
-                Fibre is a carbohydrate the body does not absorb. With this on, fibre is subtracted from the
-                carbohydrate total before the exchanges are worked out, but only when the portion holds more
-                than 5 g of it.
-              </Help>
-            </div>
             <div className="of-check">
               <label>
                 <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
@@ -468,6 +504,14 @@ export default function ExchangeLookup() {
           {view && !detail && (<>
             <div className="of-pname">{rec.name || "Unnamed food"}</div>
             <div className="of-pbrand">{r0(size)} g portion</div>
+            <div className="of-why">
+              <i>{override ? "you set" : view.why.via === "name" ? "by name"
+                : view.why.via === "composition" ? "by figures" : "no match"}</i>
+              Counted as <b>{GLABEL[view.gid]}</b>
+              {override ? "." : `, because ${view.why.rule}.`}
+              {!override && view.why.via === "default"
+                && " Set the type yourself on the left if that is wrong."}
+            </div>
             <div style={{ marginTop: 16 }}>{cards}</div>
             <div className="of-block">
               {plainFlags(view).length === 0
@@ -479,8 +523,15 @@ export default function ExchangeLookup() {
           {view && detail && (<>
             <div className="of-pname">{rec.name || "Unnamed food"}</div>
             <div className="of-pbrand">
-              {parsed ? "transcribed, check against pack" : "entered by hand"} · classified as {GLABEL[view.gid]}
-              {override ? " (overridden)" : ""}
+              {parsed ? "transcribed, check against pack" : "entered by hand"}
+            </div>
+            <div className="of-why">
+              <i>{override ? "you set" : view.why.via === "name" ? "by name"
+                : view.why.via === "composition" ? "by figures" : "no match"}</i>
+              Counted as <b>{GLABEL[view.gid]}</b>
+              {override
+                ? `, set by hand. Left to itself it would have read ${GLABEL[view.auto]}, because ${view.why.rule}.`
+                : `, because ${view.why.rule}.`}
             </div>
 
             <div className="of-block">
@@ -509,8 +560,12 @@ export default function ExchangeLookup() {
               </div>
               {Math.abs(view.drift) > 10 && (
                 <Note kind="w" title="Drift above 10%">
-                  Rounding to half exchanges has cost more than a tenth of the energy. For a food eaten in quantity,
-                  count it in grams of carbohydrate instead of exchanges.
+                  Rounding to half exchanges has cost more than a tenth of the energy.
+                  {view.pp.cho >= 5
+                    ? " For a food eaten in quantity, count it in grams of carbohydrate instead of exchanges."
+                    : " This portion carries almost no carbohydrate, so the drift is in the protein and fat exchanges" +
+                      " rather than the carbohydrate. A half exchange is a coarse unit on a portion this small;" +
+                      " weigh the food rather than reading the count as exact."}
                 </Note>)}
             </div>
 
@@ -520,9 +575,11 @@ export default function ExchangeLookup() {
                     sub={`${r1(view.pp.salt)} g salt equivalent · daily ceiling 2000 mg`} value={r0(view.na)} unit="mg" />
               <Line flag={view.pp.sugars > 15 ? "w" : ""} name="Sugars"
                     sub="total, not free sugars" value={r1(view.pp.sugars)} unit="g" />
-              <Line flag={view.pp.fibre >= 3 ? "" : "w"} name="Fibre"
-                    sub={`${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g per 1000 kcal · target ≥ 14`}
-                    value={r1(view.pp.fibre)} unit="g" />
+              <Line flag={view.pp.fibre != null && view.pp.cho >= 8 && view.pp.fibre < 3 ? "w" : ""} name="Fibre"
+                    sub={view.pp.fibre == null ? "not stated, treat as unknown"
+                      : `${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g per 1000 kcal · target ≥ 14`}
+                    value={view.pp.fibre == null ? "n/s" : r1(view.pp.fibre)}
+                    unit={view.pp.fibre == null ? "" : "g"} />
               <Line flag={view.pp.sfa > 5 ? "w" : ""} name="Saturated fat" value={r1(view.pp.sfa)} unit="g" />
               <Line flag={view.pp.k != null && view.pp.k > 200 ? "w" : ""} name="Potassium"
                     sub={view.pp.k == null ? "not stated, treat as unknown" : "renal tiers: <100 low · 100-200 medium · >200 high"}

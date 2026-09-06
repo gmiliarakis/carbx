@@ -12,6 +12,20 @@ Web-based exchange-list calculator for diabetes, kidney and weight loss diets in
 ✅ no data stored\
 ✅ no analytics
 
+## What this is, and what it is not
+
+CarbX is a teaching and self-management aid. It converts a nutrition
+declaration into exchanges and flags what a diabetes or kidney diet watches.
+
+It is not a medical device. It does not calculate insulin doses. It does not
+replace assessment by a dietitian or physician, and it holds no clinical
+context: it knows nothing about the person eating the food, their renal
+function, their insulin regimen or their targets. Every figure it shows is
+derived from the label you gave it, so a mistyped or misread label produces a
+confident wrong answer. Check parsed values against the pack before acting on
+them.
+
+
 ## Usage
 
 **1. Insert the nutritional values in four ways:**
@@ -23,7 +37,7 @@ French and Greek.\
 iii. **Read from photo** with local OCR\
 iv. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German and French databases.
 
-**2. Set the portion size and convention.** Portion in grams, and 15 g, 12 g or 10 g of carbohydrate per exchange.
+**2. Set the portion size and convention.** Portion in grams, and 15 g or 10 g of carbohydrate per exchange.
 
 **3. Read output**
    - exchanges per portion
@@ -32,7 +46,7 @@ iv. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German
 
 Macronutrients (carbohydrate, protein and fat) are the only required fields. Paste the ingredients list to scan for phosphate, potassium, sodium and sugar additives.
 
-The assigned group can always be overriden. The ledger shows the unrounded working, and the drift figure shows how much energy the rounding cost. If above 10% drift, count the food in grams of carbohydrate instead.
+Each result says which group it was counted as and whether the name or the figures decided it. The assigned group can always be overridden. The ledger shows the unrounded working, and the drift figure shows how much energy the rounding cost.
 
 ## Reference
 
@@ -51,9 +65,8 @@ fat exchange is 5 g.
 
 `decompose()` runs three stages, each on the residual the last one left:
 
-1. **Fibre.**  If >5 g/portion, fibre is subtracted from available carbohydrate and floored at 0. 
-2. **Carbohydrate.** If >0.4 g available, draws `cho / group.cho` exchanges, consuming the carbohydrate exactly. The group's protein and fat net off too, capped at what the food holds. `protein-only` and `fat-only` are classifications rather than table entries, so their carbohydrate is skipped here and never enters an exchange.
-3. **Protein, then fat.** Above 1.2 g residual protein, `protein / 7` exchanges at the tier its residual fat implies. Above 1.2 g residual fat, `fat / 5`.
+1. **Carbohydrate.** If >0.4 g available, draws `cho / group.cho` exchanges, consuming the carbohydrate exactly. The group's protein and fat net off too, capped at what the food holds. `protein-only` and `fat-only` are classifications rather than table entries, so their carbohydrate is skipped here and never enters an exchange. The protein stage is skipped for `fat-only` and for `sweet`: the exchange list writes both as carbohydrate or fat and never as protein, so a chocolate bar's few grams of protein must not become a protein exchange and absorb the food's fat with it.
+2. **Protein, then fat.** Above 1.2 g residual protein, `protein / 7` exchanges at the tier its residual fat implies. Above 1.2 g residual fat, `fat / 5`.
 
 Counts are computed unrounded, then rounded to the nearest half, ties up.
 Anything rounding to 0 is dropped. `gramsPerExchange()` inverts one exchange
@@ -62,27 +75,50 @@ null when the food has none of that macro.
 
 ## Classification
 
-`inferGroup()` tries the name first, then composition, in order:
+`inferGroupWithReason()` returns the group together with how it reached it:
+`name` when a keyword settled it, `composition` when the figures did, `default`
+when neither matched. The app shows this, so a reader can see which of the two
+produced the answer. `inferGroup()` returns the group alone.
 
-| # | Test                                                            | Result |
-| - | --------------------------------------------------------------- | ------ |
-| 1 | oil or butter keyword, CHO and protein under 5 g                 | `fat-only` |
-| 2 | milk, yoghurt or kefir keyword, CHO and protein above 2 g        | `milk` |
-| 3 | cheese, meat, fish, egg, tofu or nut keyword                     | `protein-only` under 5 g CHO, else `starch` |
-| 4 | fruit name list, five languages                                  | `fruit` |
-| 5 | CHO 2 to 35 g, protein and fat under 3 g, fibre 0.3 g or more, sugars at least 45% of CHO | `fruit` |
-| 6 | over 70% of kcal from fat, CHO and protein under 5 g             | `fat-only` |
-| 7 | over 40% from protein, CHO under 5 g                             | `protein-only` |
-| 8 | over 45% from carbohydrate                                       | `starch` above 12 g CHO, else `veg` |
-| 9 | CHO under 2 g, protein above 5 g                                 | `protein-only` |
-|   | nothing matched                                                  | `starch` |
+A name is never trusted on its own. Each keyword branch carries a composition
+gate, because a food word is often a flavour: apple pie, banana bread, milk
+chocolate, olive bread.
 
-Rule 5 catches fruit named in a language the list cannot cover. The fibre floor
-keeps sugary drinks and honey out. Dried fruit exceeds the upper CHO bound and
-depends on the name list.
+| # | Test | Result |
+| - | ---- | ------ |
+| 1 | fat keyword, and either fat leads 60% of the energy or CHO and protein are both under 5 g | `fat-only` |
+| 2 | dairy keyword, protein standing in a milk-like ratio to the carbohydrate, and either both above 2 g or the portion carrying a full milk exchange of protein | `milk` |
+| 3 | protein, fruit, vegetable, sweets and starch keywords, ranked by longest match, each with its own gate | the first whose gate passes |
+| 4 | over 70% of energy from fat, CHO and protein under 5 g | `fat-only` |
+| 5 | over 75% of energy from fat, protein under 2 g, CHO under 15 g | `fat-only` |
+| 6 | CHO 2 to 15 g, no fibre, sugars at least 70% of CHO, milk-like protein ratio | `milk` |
+| 7 | over 40% of energy from protein, CHO under 5 g | `protein-only` |
+| 8 | CHO at least 2 g, sugars at least 90% of CHO, protein and fat under 1 g, little or no fibre | `sweet` |
+| 9 | CHO under 2 g, protein above 5 g | `protein-only` |
+| 10 | CHO up to 8 g, fat under 3 g, vegetable-like protein ratio | `veg` |
+| 11 | CHO 8 to 35 g, fat under 3 g, fibre at least 0.3 g, sugars at least 45% of CHO, almost no protein | `fruit` |
+|  | nothing matched | `starch` |
+
+Rule 11 catches fruit named in a language the keyword list does not cover. The
+fibre floor keeps sugary drinks and honey out. Dried fruit exceeds the upper
+bound and depends on the name list.
+
+Rule 5 exists because of imitation cheeses: coconut oil and starch, no protein
+at all, under a name that reads as dairy. Without it they reached the starch
+default. Rule 3's ranking by longest keyword is what makes "aardappel" beat
+"appel", "buttermilk" beat "butter" and "green bean" beat "bean".
 
 The Dutch stems `ei` (egg) and `vis` (fish) match at a word start only, so
-`protein` and `provisions` do not trigger rule 3.
+`protein` and `provisions` do not trigger the protein branch.
+
+The sweets list used to live inside the starch keyword list, since both carry
+15 g of carbohydrate. They are separate now, because they do not carry the same
+protein and fat: a starch exchange is charged 3 g of protein and 1 g of fat,
+which a soft drink or a spoon of honey plainly does not have. Membership
+follows the 2007 list, so bread, pancakes, waffles and croissants stay on
+starch while doughnuts, muffins and sweet rolls do not. Known gap: sweets are
+reached by name, so a dessert worded outside the keyword lists still falls to
+starch.
 
 ## Label parser
 
@@ -131,10 +167,15 @@ match at all.
 | ------------- | ------------------------- | ------------ |
 | Sodium        | above 250 mg              | above 500 mg |
 | Sugars        | above 15 g                |              |
+| Fibre         | under 3 g, and only when the label declared it and the portion carries at least 8 g of carbohydrate | |
 | Saturated fat | above 5 g                 |              |
 | Potassium     | above 200 mg              |              |
 | Phosphorus    | above 12 mg per g protein |              |
 | Energy drift  | above 10% either way      |              |
+
+A blank field is unknown, not zero. Potassium, phosphorus and fibre all report
+`n/s` when the label omits them, and no flag fires on a value that was never
+declared. This is why olive oil is not reported as low in fibre.
 
 Sodium comes from salt at 400 mg/g. Sugars are total, not free, because that
 is what the declaration gives. Potassium carries the renal tiers: low below 100 mg, medium 100 to 200,
@@ -152,6 +193,97 @@ the absolute figure is what marks a food carrying additive phosphorus.
 
 OCR accuracy varies with photo quality, and Open Food Facts is crowd-sourced and
 unverified. Check parsed figures against the pack.
+
+## Validation
+
+Unit tests show the code does what it was told to do. They say nothing about
+whether the exchanges are the right ones. [validation/VALIDATION.md](validation/VALIDATION.md)
+is the other half: twenty real supermarket products, Greek and Dutch, with
+barcodes, worked through against the method as written down here. The recount
+in `validation/build.mjs` is a separate transcription of the three stages and
+does not call `decompose()`, so the two agreeing is evidence the implementation
+matches its own description.
+
+The first run of it found two classification failures, both now fixed and both
+covered by tests: halloumi was in the keyword list in Latin script only, so a
+pack labelled `χαλούμι` fell through to starch, and a coconut-oil imitation
+cheese reached the starch default because the fat rule required under 5 g of
+carbohydrate. Regenerate with `node validation/build.mjs`.
+
+## References
+
+The reference table and the thresholds come from the following. Where CarbX
+departs from a source, or where a source is contested, it says so.
+
+**Exchange lists.** *Choose Your Foods: Exchange Lists for Diabetes*, American
+Diabetes Association and American Dietetic Association, Chicago and Alexandria
+VA, 2007. Its food-list table is what CarbX implements, value for value:
+
+| List | CHO g | Protein g | Fat g | kcal |
+| --- | --- | --- | --- | --- |
+| Starch | 15 | 0-3 | 0-1 | 80 |
+| Fruits | 15 | - | - | 60 |
+| Milk, fat-free or 1% | 12 | 8 | 0-3 | 100 |
+| Milk, reduced fat 2% | 12 | 8 | 5 | 130 |
+| Milk, whole | 12 | 8 | 8 | 150 |
+| Sweets, desserts, other carbohydrates | 15 | varies | varies | varies |
+| Nonstarchy vegetables | 5 | 2 | - | 25 |
+| Meat, lean | - | 7 | 0-3 | 45 |
+| Meat, medium fat | - | 7 | 4-7 | 75 |
+| Meat, high fat | - | 7 | 8 or more | 100 |
+| Fats | - | - | 5 | 45 |
+
+Two things follow from the ranges. Where the list gives one, CarbX takes the
+upper bound as the exchange's nominal figure: a starch exchange is charged 3 g
+of protein and 1 g of fat. And the protein tiers are the list's own fat bands,
+0-3 g lean, 4-7 g medium, 8 g or more high, applied to the fat per exchange the
+label actually declares rather than to the list's nominal figure. The milk
+variants work the same way.
+
+A later edition exists, retitled *Choose Your Foods: Food Lists for Diabetes*,
+5th edition, 2019. CarbX follows the 2007 table above; a reader working from
+the newer edition should check the two agree before relying on the output.
+
+**Carbohydrate conventions.** The 15 g unit is the US convention above, 10 g
+the Dutch koolhydraateenheid. Only the carbohydrate column scales, by
+`unit / 15`; a milk exchange carries 8 g of protein under every convention.
+
+**Fibre.** Total carbohydrate is what gets counted. Nothing is netted off for
+fibre. The 2007 exchange list contains no fibre-subtraction rule, its only
+fibre marker flagging a food as a good source at more than 3 g per serving, and
+the American Diabetes Association states that terms like "net carbs" are not
+defined by the FDA and that it does not recommend their use. An earlier version
+of CarbX subtracted fibre above 5 g per portion; it was removed because nothing
+supported it.
+
+**Sodium.** CarbX warns above 250 mg and alerts above 500 mg of sodium per
+portion. For comparison, the 2007 list marks a food as high in sodium at 480 mg
+or more per serving.
+
+**Salt and sodium.** Sodium is derived from declared salt at 400 mg per gram,
+the inverse of the EU conversion factor: salt equivalent = sodium × 2.5,
+Regulation (EU) No 1169/2011, Annex I. Where Open Food Facts gives sodium but
+no salt, salt is derived the same way.
+
+**Phosphorus.** Phosphorus is reported per gram of protein because the ratio,
+not the absolute figure, marks a food carrying additive phosphorus.
+Kalantar-Zadeh K, Gutekunst L, Mehrotra R, et al. Understanding sources of
+dietary phosphorus in the treatment of patients with chronic kidney disease.
+*Clin J Am Soc Nephrol* 2010;5:519-530, gives the absorption figures the app
+cites: around 90% for inorganic additive phosphorus against 40 to 60% for
+organic phosphorus in whole foods. Noori N, Kalantar-Zadeh K, Kovesdy CP, et al.
+Association of dietary phosphorus intake and phosphorus to protein ratio with
+mortality in hemodialysis patients. *Clin J Am Soc Nephrol* 2010;5(4):683-692,
+found mortality rising at ratios of 14 mg/g and above, against a reference band
+of 12 to under 14. CarbX flags above 12 mg/g, which is the conservative end of
+that evidence rather than its centre.
+
+**Open Food Facts.** Every nutriment field ending in `_100g` is returned in
+grams, energy excepted: "fields that end with `_100g` correspond to the amount
+of a nutriment (in g, or kJ for energy) for 100 g or 100 ml of product"
+([data-fields.txt](https://world.openfoodfacts.org/data/data-fields.txt)).
+Potassium and phosphorus are converted to milligrams on import; salt is already
+in grams. The database is crowd-sourced and unverified.
 
 ## Development
 

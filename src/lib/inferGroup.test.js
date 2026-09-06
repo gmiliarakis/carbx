@@ -187,8 +187,9 @@ describe("inferGroup(): composition fallback, no useful name", () => {
 describe("inferGroup(): a dairy word used as a modifier is not dairy", () => {
   it("milk chocolate is not a milk exchange", () => {
     // 7.6 g of protein against 59 g of carbohydrate is nothing like the 8 to 12
-    // a milk exchange carries, so the word is a modifier, not the food
-    expect(inferGroup({ cho: 59, pro: 7.6, fat: 30, sugars: 52, fibre: 3.4 }, "Milk chocolate")).toBe("starch");
+    // a milk exchange carries, so the word is a modifier, not the food. It
+    // lands on the sweets list, where the exchange list puts chocolate.
+    expect(inferGroup({ cho: 59, pro: 7.6, fat: 30, sugars: 52, fibre: 3.4 }, "Milk chocolate")).toBe("sweet");
   });
   it("real dairy still matches on the same keyword", () => {
     expect(inferGroup({ cho: 4.7, pro: 3.4, fat: 3.6, sugars: 4.7 }, "Whole milk")).toBe("milk");

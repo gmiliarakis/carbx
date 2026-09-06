@@ -4,9 +4,9 @@ import { KEYWORDS } from "./keywords.js";
 // plain function of its arguments.
 
 // An exchange list groups foods by how much carbohydrate, protein and fat one
-// exchange of a group carries. The convention in use (15 g US, 12 g Belgian,
-// 10 g Kenyan and Dutch) redefines the carbohydrate unit and nothing else, so
-// only the cho column scales. A milk exchange carries 8 g of protein in every
+// exchange of a group carries. The convention in use (15 g US, 10 g Dutch)
+// redefines the carbohydrate unit and nothing else, so only the cho column
+// scales. A milk exchange carries 8 g of protein in every
 // system. TIERS covers the protein side: the fat that comes with 7 g of protein
 // decides lean, medium or high fat.
 export function groups(unit) {
@@ -159,7 +159,12 @@ function keywordScore(group, name) {
 // milk portion however dilute it is per 100 g. The threshold is read from the
 // group table rather than written out, so it cannot drift from it. The defaults
 // make the rule read per 100 g at the 15 g convention.
-export function inferGroup(p, name = "", opts = {}) {
+//
+// Returns the group together with how it was reached. `via` is "name" when a
+// keyword settled it, "composition" when the macros did, and "default" when
+// neither matched. The app shows this, so a reader can see which of the two
+// produced the answer instead of taking the label on trust.
+export function inferGroupWithReason(p, name = "", opts = {}) {
   const { portionG = 100, unit = 15 } = opts;
   const t = name.toLowerCase();
   const kcal = p.cho * 4 + p.pro * 4 + p.fat * 9 || 1;
@@ -174,6 +179,8 @@ export function inferGroup(p, name = "", opts = {}) {
   // evidence against a food, only stated data can rule something out.
   const fibreStated = num(p.fibre) != null;
   const score = (g) => keywordScore(g, t);
+  const byName = (group, rule) => ({ group, via: "name", rule });
+  const byMacros = (group, rule) => ({ group, via: "composition", rule });
 
   // Fat first, and it wins outright over a longer name from another group,
   // because a fat name plus fat-dominant macros is not ambiguous: "cream
@@ -181,7 +188,8 @@ export function inferGroup(p, name = "", opts = {}) {
   // nut butters live in this list, following the US and EDE lists, so the gate
   // is that fat dominates the energy rather than that protein is absent. It is
   // what keeps "olive bread" and "peanut butter cookies" out.
-  if (score("fat") > 0 && (fatPct >= 0.6 || (p.cho < 5 && p.pro < 5))) return "fat-only";
+  if (score("fat") > 0 && (fatPct >= 0.6 || (p.cho < 5 && p.pro < 5)))
+    return byName("fat-only", "the name matched the fat list and the macros agree");
 
   const portionPro = p.pro * (portionG / 100);
   // A dairy word is only dairy when the food carries protein against its
@@ -197,7 +205,8 @@ export function inferGroup(p, name = "", opts = {}) {
   const dairyLike = proPerCho >= milkRatio * 0.3
     && (p.fat < 12 || proPerCho >= milkRatio * 0.75);
   if (score("milk") > 0 && dairyLike
-      && ((p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro)) return "milk";
+      && ((p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro))
+    return byName("milk", "the name matched the dairy list and the protein stands in a milk-like ratio to the carbohydrate");
 
   // A fruit word is often a flavour rather than the food: apple pie, banana
   // bread, strawberry yoghurt, lemonade, cherry cola, fruit squash. The name is
@@ -218,16 +227,30 @@ export function inferGroup(p, name = "", opts = {}) {
     // A protein-named food is a protein until it carries a starch exchange's
     // worth of carbohydrate, which is what a breadcrumb coating or a cracker
     // does. Feta at 6.7 g and a soft cheese at 5.3 g are still protein.
-    protein: () => (p.cho < 12 ? "protein-only" : "starch"),
-    fruit: () => (contradictsFruit ? null : "fruit"),
+    protein: () => (p.cho < 12
+      ? byName("protein-only", "the name matched the protein list")
+      : byName("starch", "the name matched the protein list, but the food carries a starch exchange of carbohydrate")),
+    fruit: () => (contradictsFruit
+      ? null
+      : byName("fruit", "the name matched the fruit list and nothing in the macros contradicts it")),
     // A vegetable exchange is 5 g of carbohydrate, so a vegetable name on a
     // food carrying more than about two of them is a dish, not a vegetable.
     // Fat is deliberately not part of the gate: roasted vegetables are still
     // vegetables, and decompose turns the oil into fat exchanges by itself.
-    veg: () => (p.cho <= 12 ? "veg" : null),
-    // Starch covers the sweets too, so the gate is only that the food actually
-    // carries carbohydrate: a "cauliflower rice" does not.
-    starch: () => (p.cho >= 8 ? "starch" : null),
+    veg: () => (p.cho <= 12
+      ? byName("veg", "the name matched the vegetable list and the carbohydrate is low enough for one")
+      : null),
+    // The sweets list carries 15 g of carbohydrate and nothing else, which is
+    // what separates it from starch. The gate is that the food actually carries
+    // the carbohydrate: a sugar-free version of the same product does not.
+    sweet: () => (p.cho >= 8
+      ? byName("sweet", "the name matched the sweets list and the food carries carbohydrate")
+      : null),
+    // The gate is only that the food actually carries carbohydrate: a
+    // "cauliflower rice" does not.
+    starch: () => (p.cho >= 8
+      ? byName("starch", "the name matched the starch list and the food carries carbohydrate")
+      : null),
   };
   const ranked = Object.keys(gates)
     .map((g) => [g, score(g)])
@@ -237,16 +260,22 @@ export function inferGroup(p, name = "", opts = {}) {
     const decided = gates[g]();
     if (decided) return decided;
   }
-  // Composition check for fruit the name list misses: mostly-sugar
-  // carbohydrate, some fibre, almost no protein or fat, in a plausible
-  // per-100 g range. The fibre floor keeps sugary drinks and honey out.
-  // Dried fruit is too concentrated to fit here and relies on the name list.
+
   // Composition fallback, for a food whose name says nothing useful. The
   // carbohydrate groups are told apart the way their definitions differ: by how
   // much protein rides with the carbohydrate, and by how much carbohydrate there
   // is at all. The ratios are read off the group table, not written out here.
   // Barely any fat-free carbohydrate: a fat, not a carbohydrate food.
-  if (fatPct > 0.7 && p.cho < 5 && p.pro < 5) return "fat-only";
+  if (fatPct > 0.7 && p.cho < 5 && p.pro < 5)
+    return byMacros("fat-only", "over 70% of the energy is fat, with little carbohydrate or protein");
+
+  // A food whose energy is almost entirely fat and which carries no protein at
+  // all is a fat exchange even when it declares some carbohydrate. Coconut-oil
+  // and starch imitation cheeses sit here: 29 g of fat, 11 g of starch, no
+  // protein, and a name that reads as cheese. The protein floor is what keeps
+  // real foods carrying both out of this branch.
+  if (fatPct > 0.75 && p.pro < 2 && p.cho < 15)
+    return byMacros("fat-only", "the energy is almost all fat, with no protein to speak of and little carbohydrate");
 
   // Milk is checked before the protein rules. Dairy carries a lot of protein
   // against little carbohydrate, so a plain yoghurt would otherwise read as a
@@ -254,28 +283,51 @@ export function inferGroup(p, name = "", opts = {}) {
   // list. 12 g of carbohydrate against 8 g of protein, all of it sugar, no
   // fibre. The protein ratio is what keeps a watery vegetable out.
   if (p.cho >= 2 && p.cho <= 15 && fibre < 1 && sugarFrac >= 0.7
-      && proPerCho >= (G.milk.pro / G.milk.cho) * 0.75) return "milk";
+      && proPerCho >= (G.milk.pro / G.milk.cho) * 0.75)
+    return byMacros("milk", "sugar carbohydrate with no fibre, carrying protein in a milk-like ratio");
+
+  // Carbohydrate that is essentially all sugar, with nothing else in it: a soft
+  // drink, a squash, a syrup, honey. This is the sweets list. It is not starch,
+  // which would charge it 3 g of protein and 1 g of fat per exchange it plainly
+  // does not have, and it is not fruit: a fruit or juice name reaches the fruit
+  // rules above, so anything arriving here was never named as one.
+  if (p.cho >= 2 && sugarFrac >= 0.9 && p.pro < 1 && p.fat < 1
+      && (!fibreStated || fibre < 0.5))
+    return byMacros("sweet", "the carbohydrate is almost entirely sugar, with no protein, fat or fibre alongside it");
 
   // Otherwise, barely any carbohydrate means a protein.
-  if (proPct > 0.4 && p.cho < 5) return "protein-only";
-  if (p.cho < 2 && p.pro > 5) return "protein-only";
+  if (proPct > 0.4 && p.cho < 5)
+    return byMacros("protein-only", "over 40% of the energy is protein, with under 5 g of carbohydrate");
+  if (p.cho < 2 && p.pro > 5)
+    return byMacros("protein-only", "almost no carbohydrate, with protein present");
 
   // Nonstarchy vegetable: 5 g of carbohydrate against 2 g of protein, so little
   // carbohydrate with protein alongside it. That protein is what separates a
   // vegetable from a sugary drink carrying the same carbohydrate.
-  if (p.cho <= 8 && p.fat < 3 && proPerCho >= (G.veg.pro / G.veg.cho) * 0.4) return "veg";
+  if (p.cho <= 8 && p.fat < 3 && proPerCho >= (G.veg.pro / G.veg.cho) * 0.4)
+    return byMacros("veg", "little carbohydrate with vegetable-like protein alongside it");
 
   // Fruit: 15 g of carbohydrate and no protein, mostly sugar, with some fibre.
   // Carrying next to no protein is what separates it from starch and milk, and
-  // the fibre floor keeps sugar-water out.
+  // the fibre floor keeps sugar-water out. Rule 5 catches fruit the name list
+  // does not cover; dried fruit is too concentrated to fit and relies on names.
   if (p.cho >= 8 && p.cho <= 35 && p.fat < 3 && fibre >= 0.3 && sugarFrac >= 0.45
-      && proPerCho < (G.starch.pro / G.starch.cho) * 0.5) return "fruit";
+      && proPerCho < (G.starch.pro / G.starch.cho) * 0.5)
+    return byMacros("fruit", "mostly-sugar carbohydrate with some fibre and almost no protein or fat");
 
-  return "starch";
+  return { group: "starch", via: "default",
+    rule: "neither the name nor the composition matched a group, so it falls to starch" };
 }
 
-// Draws a food's macros down to whole exchanges, one group at a time:
-// carbohydrate first against the chosen group, then the protein left over
+export function inferGroup(p, name = "", opts = {}) {
+  return inferGroupWithReason(p, name, opts).group;
+}
+
+// Draws a food's macros down to whole exchanges, one group at a time. Total
+// carbohydrate is what gets counted; nothing is netted off for fibre, because
+// no exchange list instructs it and the American Diabetes Association does not
+// recommend counting "net carbs".
+// Carbohydrate first against the chosen group, then the protein left over
 // (7 g per exchange, fat tier set by the fat that comes with it), then the
 // fat still left (5 g per exchange). Each stage works on the residual from
 // the stage before, so order matters. Fractions round to the nearest half.
@@ -286,14 +338,12 @@ export function inferGroup(p, name = "", opts = {}) {
 // and the tier is picked because the food's fat falls inside it, so a food with
 // 3 g of fat per exchange is lean carrying 3 g. Nothing spills into a separate
 // fat exchange on account of a nominal figure.
-export function decompose(p, unit, groupId, subFibre, opts = {}) {
+export function decompose(p, unit, groupId, opts = {}) {
   const { proteinTiers = true } = opts;
   const G = groups(unit);
   const steps = [], out = [];
-  const choAvail = subFibre && p.fibre > 5 ? Math.max(0, p.cho - p.fibre) : p.cho;
-  let cho = choAvail, pro = p.pro, fat = p.fat;
-  steps.push({ kind: "start", label: subFibre && p.fibre > 5
-    ? `Portion, fibre ${r1(p.fibre)} g netted off` : "Portion as eaten", cho, pro, fat });
+  let cho = p.cho, pro = p.pro, fat = p.fat;
+  steps.push({ kind: "start", label: "Portion as eaten", cho, pro, fat });
 
   if (G[groupId] && cho > 0.4) {
     let g = G[groupId];
@@ -316,7 +366,11 @@ export function decompose(p, unit, groupId, subFibre, opts = {}) {
   // A food on the fat list counts as fat exchanges and nothing else. That is
   // what makes nuts work: 30 g of almonds is fat, and the protein riding
   // along with it is not a separate exchange in either the US or the EDE list.
-  if (pro > 1.2 && groupId !== "fat-only") {
+  // The sweets list is skipped for the same reason: its entries are written as
+  // carbohydrate plus fat and never as protein, so the couple of grams of
+  // protein in a chocolate bar or a slice of cake must not become a protein
+  // exchange and swallow the food's fat with it.
+  if (pro > 1.2 && groupId !== "fat-only" && groupId !== "sweet") {
     const ex = pro / PROTEIN_EXCHANGE.pro, fatPer = fat / ex;
     const tier = TIERS.find((t) => fatPer <= t.max) || TIERS[2];
     const label = proteinTiers ? tier.label : "Protein";
@@ -347,4 +401,40 @@ export function gramsPerExchange(ref, per100) {
   if (ref.pro > 0) return per100.pro > 0 ? (100 * ref.pro) / per100.pro : null;
   if (ref.fat > 0) return per100.fat > 0 ? (100 * ref.fat) / per100.fat : null;
   return null;
+}
+
+// Open Food Facts returns every nutriment field ending in _100g in grams,
+// energy excepted: "fields that end with _100g correspond to the amount of a
+// nutriment (in g, or kJ for energy) for 100 g or 100 ml of product"
+// (world.openfoodfacts.org/data/data-fields.txt). CarbX asks for potassium and
+// phosphorus in mg, so those two are scaled and nothing else is. Salt is
+// already in the grams the form expects. Where salt is absent but sodium is
+// given, salt is derived at the EU factor of 2.5 (Regulation 1169/2011,
+// Annex I: salt equivalent = sodium x 2.5).
+export const OFF_MINERAL_MG = 1000;
+export const SODIUM_TO_SALT = 2.5;
+export function fromOpenFoodFacts(product) {
+  const p = product || {};
+  const N = p.nutriments || {};
+  const s = (v) => (num(v) == null ? "" : String(num(v)));
+  const mg = (v) => (num(v) == null ? "" : String(r1(num(v) * OFF_MINERAL_MG)));
+  const salt = num(N.salt_100g) != null
+    ? num(N.salt_100g)
+    : num(N.sodium_100g) != null
+      ? Math.round(num(N.sodium_100g) * SODIUM_TO_SALT * 1000) / 1000
+      : null;
+  return {
+    name: p.product_name || p.code || "",
+    cho: s(N.carbohydrates_100g),
+    pro: s(N.proteins_100g),
+    fat: s(N.fat_100g),
+    fibre: s(N.fiber_100g),
+    sugars: s(N.sugars_100g),
+    sfa: s(N["saturated-fat_100g"]),
+    salt: s(salt),
+    k: mg(N.potassium_100g),
+    p: mg(N.phosphorus_100g),
+    kcal: s(N["energy-kcal_100g"]),
+    ing: p.ingredients_text || "",
+  };
 }

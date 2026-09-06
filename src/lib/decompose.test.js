@@ -10,7 +10,7 @@ import { decompose, gramsPerExchange, groups, TIERS, MILK_TIERS, half } from "./
 describe("decompose(): the app's own built-in test foods", () => {
   it("crackers: starch group draws all CHO, leftover fat becomes a Fat exchange", () => {
     // cho=62 pro=9 fat=14, unit=15, group=starch, fibre=4 (below the >5 netting threshold)
-    const d = decompose({ cho: 62, pro: 9, fat: 14, fibre: 4 }, 15, "starch", true);
+    const d = decompose({ cho: 62, pro: 9, fat: 14, fibre: 4 }, 15, "starch");
     // 62/15 = 4.1333 starch exchanges, which draws off all 62 g of CHO.
     // Protein is capped at what is there (9 < 4.1333*3 = 12.4), so all 9 g of
     // protein and 4.1333 g of fat net off against the starch exchange and
@@ -29,7 +29,7 @@ describe("decompose(): the app's own built-in test foods", () => {
     // cho=1.2 pro=19 fat=9. "protein-only" is not one of the five keys groups()
     // returns, so the CHO draw is skipped and the 1.2 g never enters an
     // exchange. "protein-only" and "fat-only" opt out of CHO grouping.
-    const d = decompose({ cho: 1.2, pro: 19, fat: 9, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 1.2, pro: 19, fat: 9, fibre: 0 }, 15, "protein-only");
     expect(d.rounded.some((o) => o.ref.cho > 0)).toBe(false);
     // pro/7 = 2.7143 exchanges, fat per exchange = 9/2.7143 = 3.3158, above
     // lean's max of 3 and within medium's max of 7, so the tier is medium.
@@ -46,7 +46,7 @@ describe("decompose(): the app's own built-in test foods", () => {
   });
 
   it("yoghurt: the milk exchange carries the fat the label declares", () => {
-    const d = decompose({ cho: 6.5, pro: 4.2, fat: 1.6, fibre: 0 }, 15, "milk", true);
+    const d = decompose({ cho: 6.5, pro: 4.2, fat: 1.6, fibre: 0 }, 15, "milk");
     const perEx = 1.6 / (6.5 / 12); // 2.95 g of fat per exchange, inside 0 to 3
     const milk = d.rounded.find((o) => o.label === "Fat-free milk");
     expect(milk.ex).toBeCloseTo(0.5, 10); // 6.5/12 = 0.5417 -> half() = 0.5
@@ -62,11 +62,11 @@ describe("decompose(): the app's own built-in test foods", () => {
 
 describe("decompose(): the > 0.4 threshold for drawing a CHO exchange", () => {
   it("does not draw a starch exchange at exactly 0.4 g CHO (strict >)", () => {
-    const d = decompose({ cho: 0.4, pro: 0, fat: 0, fibre: 0 }, 15, "starch", true);
+    const d = decompose({ cho: 0.4, pro: 0, fat: 0, fibre: 0 }, 15, "starch");
     expect(d.rounded.find((o) => o.label === "Starch")).toBeUndefined();
   });
   it("draws a starch exchange just above 0.4 g CHO", () => {
-    const d = decompose({ cho: 0.41, pro: 0, fat: 0, fibre: 0 }, 15, "starch", true);
+    const d = decompose({ cho: 0.41, pro: 0, fat: 0, fibre: 0 }, 15, "starch");
     // 0.41/15 = 0.0273 exchanges, which half() rounds to 0, so the draw is
     // filtered out of `rounded`. The step still records it.
     expect(d.steps.some((s) => s.kind === "draw" && s.label.includes("Starch"))).toBe(true);
@@ -75,19 +75,19 @@ describe("decompose(): the > 0.4 threshold for drawing a CHO exchange", () => {
 
 describe("decompose(): the > 1.2 g thresholds for protein and fat exchanges", () => {
   it("does not draw a protein exchange at exactly 1.2 g residual protein", () => {
-    const d = decompose({ cho: 0, pro: 1.2, fat: 0, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 1.2, fat: 0, fibre: 0 }, 15, "protein-only");
     expect(d.rounded).toHaveLength(0);
   });
   it("draws a protein exchange just above 1.2 g", () => {
-    const d = decompose({ cho: 0, pro: 1.21, fat: 0, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 1.21, fat: 0, fibre: 0 }, 15, "protein-only");
     expect(d.steps.some((s) => s.kind === "draw" && s.label.includes("protein"))).toBe(true);
   });
   it("does not draw a fat exchange at exactly 1.2 g residual fat", () => {
-    const d = decompose({ cho: 0, pro: 0, fat: 1.2, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 0, fat: 1.2, fibre: 0 }, 15, "protein-only");
     expect(d.rounded).toHaveLength(0);
   });
   it("draws a fat exchange just above 1.2 g", () => {
-    const d = decompose({ cho: 0, pro: 0, fat: 1.21, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 0, fat: 1.21, fibre: 0 }, 15, "protein-only");
     expect(d.steps.some((s) => s.kind === "draw" && s.label === "0.2 × Fat")).toBe(true);
   });
 });
@@ -97,7 +97,7 @@ describe("decompose(): protein fat-tier boundaries", () => {
   // Lean max 3, medium max 7, high unbounded.
   function tierFor(fatPerExchange) {
     const pro = 7; // exactly 1 protein exchange, so fat-per-exchange === fat
-    const d = decompose({ cho: 0, pro, fat: fatPerExchange, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro, fat: fatPerExchange, fibre: 0 }, 15, "protein-only");
     return d.rounded.find((o) => o.ref.pro === 7)?.label;
   }
   it("exactly at the lean/medium boundary (3) still counts as lean (<=)", () => {
@@ -116,11 +116,11 @@ describe("decompose(): protein fat-tier boundaries", () => {
 
 describe("decompose(): rounding to the nearest half exchange", () => {
   it("rounds a small residual (0.24 -> half(0.24)=0) away to nothing", () => {
-    const d = decompose({ cho: 0, pro: 0, fat: 0.24 * 5, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 0, fat: 0.24 * 5, fibre: 0 }, 15, "protein-only");
     expect(d.rounded).toHaveLength(0);
   });
   it("rounds 0.25 up to 0.5, not down to 0, following Math.round", () => {
-    const d = decompose({ cho: 0, pro: 0, fat: 0.25 * 5, fibre: 0 }, 15, "protein-only", true);
+    const d = decompose({ cho: 0, pro: 0, fat: 0.25 * 5, fibre: 0 }, 15, "protein-only");
     expect(d.rounded[0].ex).toBeCloseTo(0.5, 10);
   });
   it("half() itself rounds to the nearest 0.5, ties rounding up", () => {
@@ -131,32 +131,40 @@ describe("decompose(): rounding to the nearest half exchange", () => {
   });
 });
 
-describe("decompose(): fibre netting", () => {
-  it("does not net off fibre at exactly 5 g (strict >5 threshold)", () => {
-    const d = decompose({ cho: 20, pro: 0, fat: 0, fibre: 5 }, 15, "starch", true);
+describe("decompose(): fibre is not netted off", () => {
+  // The subtraction used to happen above 5 g per portion. It was removed: no
+  // exchange list instructs it, and the American Diabetes Association does not
+  // recommend counting "net carbs". Total carbohydrate is what gets counted.
+  it("counts total carbohydrate however much fibre the portion holds", () => {
+    const none = decompose({ cho: 20, pro: 0, fat: 0, fibre: 0 }, 15, "starch");
+    const lots = decompose({ cho: 20, pro: 0, fat: 0, fibre: 20 }, 15, "starch");
+    expect(lots.rounded).toEqual(none.rounded);
+    expect(lots.rounded[0].ex).toBe(1.5);
+  });
+
+  it("is unaffected by fibre either side of the old 5 g threshold", () => {
+    const at5 = decompose({ cho: 20, pro: 0, fat: 0, fibre: 5 }, 15, "starch");
+    const over5 = decompose({ cho: 20, pro: 0, fat: 0, fibre: 5.01 }, 15, "starch");
+    expect(over5.rounded[0].ex).toBe(at5.rounded[0].ex);
+  });
+
+  it("does not mention fibre in the opening ledger row", () => {
+    const d = decompose({ cho: 20, pro: 0, fat: 0, fibre: 20 }, 15, "starch");
     expect(d.steps[0].label).toBe("Portion as eaten");
     expect(d.steps[0].cho).toBe(20);
   });
-  it("nets off fibre just above 5 g", () => {
-    const d = decompose({ cho: 20, pro: 0, fat: 0, fibre: 5.01 }, 15, "starch", true);
-    expect(d.steps[0].label).toContain("netted off");
-    expect(d.steps[0].cho).toBeCloseTo(20 - 5.01, 10);
-  });
-  it("never nets fibre below zero available CHO (floors at 0, doesn't go negative)", () => {
-    const d = decompose({ cho: 5, pro: 0, fat: 0, fibre: 20 }, 15, "starch", true);
-    expect(d.steps[0].cho).toBe(0);
-  });
-  it("subFibre=false ignores fibre entirely, however high", () => {
-    const d = decompose({ cho: 20, pro: 0, fat: 0, fibre: 20 }, 15, "starch", false);
-    expect(d.steps[0].cho).toBe(20);
+
+  it("works when fibre is absent from the record entirely", () => {
+    expect(() => decompose({ cho: 20, pro: 0, fat: 0 }, 15, "starch")).not.toThrow();
   });
 });
 
+
 describe("decompose(): CHO-per-unit conventions (US 15g, Belgian 12g, Dutch/Kenyan 10g)", () => {
   it("the same 30 g CHO portion yields more, smaller exchanges at a smaller unit size", () => {
-    const d15 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 15, "starch", true);
-    const d12 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 12, "starch", true);
-    const d10 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 10, "starch", true);
+    const d15 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 15, "starch");
+    const d12 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 12, "starch");
+    const d10 = decompose({ cho: 30, pro: 0, fat: 0, fibre: 0 }, 10, "starch");
     expect(d15.rounded[0].ex).toBeCloseTo(2, 10); // 30/15
     expect(d12.rounded[0].ex).toBeCloseTo(2.5, 10); // 30/12 = 2.5
     expect(d10.rounded[0].ex).toBeCloseTo(3, 10); // 30/10
@@ -191,7 +199,7 @@ describe("decompose(): never produces a negative exchange count", () => {
       for (let pro = 0; pro <= 60; pro += 23) {
         for (let fat = 0; fat <= 60; fat += 19) {
           for (const gid of groupIds) {
-            const d = decompose({ cho, pro, fat, fibre: 0 }, 15, gid, true);
+            const d = decompose({ cho, pro, fat, fibre: 0 }, 15, gid);
             for (const o of d.rounded) expect(o.ex).toBeGreaterThanOrEqual(0);
             for (const s of d.steps) {
               if (s.kind === "res") {
@@ -241,17 +249,17 @@ describe("milk fat variants", () => {
   // The US list defines three milk exchanges sharing 12 g of carbohydrate and
   // 8 g of protein, separated only by the fat they carry.
   it("skim milk stays on the fat-free variant and nets off no fat", () => {
-    const d = decompose({ cho: 5, pro: 3.4, fat: 0.2, fibre: 0 }, 15, "milk", true);
+    const d = decompose({ cho: 5, pro: 3.4, fat: 0.2, fibre: 0 }, 15, "milk");
     expect(d.rounded.find((o) => o.label === "Fat-free milk")).toBeTruthy();
   });
   it("2% milk lands on the reduced-fat variant", () => {
     // cho 4.8 -> 0.4 exchanges, fat 2 -> 5 g per exchange, inside 4 to 7
-    const d = decompose({ cho: 4.8, pro: 3.3, fat: 2, fibre: 0 }, 15, "milk", true);
+    const d = decompose({ cho: 4.8, pro: 3.3, fat: 2, fibre: 0 }, 15, "milk");
     expect(d.steps.some((s) => s.label && s.label.includes("Reduced-fat milk"))).toBe(true);
   });
   it("whole milk lands on the whole variant and nets its fat into the milk exchange", () => {
     // cho 4.7 -> 0.3917 exchanges, fat 3.6 -> 9.2 g per exchange, above 8
-    const d = decompose({ cho: 4.7, pro: 3.4, fat: 3.6, fibre: 0 }, 15, "milk", true);
+    const d = decompose({ cho: 4.7, pro: 3.4, fat: 3.6, fibre: 0 }, 15, "milk");
     const draw = d.steps.find((s) => s.kind === "draw" && s.label.includes("Whole milk"));
     expect(draw).toBeTruthy();
     expect(draw.fat).toBeLessThan(0); // fat was drawn into the milk exchange
@@ -269,14 +277,14 @@ describe("milk fat variants", () => {
 describe("milk exchanges never override the declared fat", () => {
   it("charges the milk exchange exactly the fat on the label, at every variant", () => {
     for (const fat of [0, 1.6, 3, 3.6, 5, 9, 14]) {
-      const d = decompose({ cho: 4.7, pro: 3.4, fat, fibre: 0 }, 15, "milk", true);
+      const d = decompose({ cho: 4.7, pro: 3.4, fat, fibre: 0 }, 15, "milk");
       const draw = d.steps.find((s) => s.kind === "draw" && s.label.includes("milk"));
       expect(-draw.fat).toBeCloseTo(fat, 10);
     }
   });
   it("puts 3 g of fat per exchange in fat-free, inclusive, and 3.01 in reduced-fat", () => {
     // 12 g of CHO is exactly one exchange, so fat per exchange is the fat itself
-    const at = (fat) => decompose({ cho: 12, pro: 8, fat, fibre: 0 }, 15, "milk", true).rounded[0].label;
+    const at = (fat) => decompose({ cho: 12, pro: 8, fat, fibre: 0 }, 15, "milk").rounded[0].label;
     expect(at(3)).toBe("Fat-free milk");
     expect(at(3.01)).toBe("Reduced-fat milk");
     expect(at(7)).toBe("Reduced-fat milk");
@@ -289,7 +297,7 @@ describe("protein tiers switch", () => {
   // a setting rather than a fixed rule. Tiered is the default.
   const fatty = { cho: 0, pro: 21, fat: 24, fibre: 0 }; // 8 g of fat per exchange
   it("tiered: names the tier and carries the declared fat", () => {
-    const d = decompose(fatty, 15, "protein-only", true, { proteinTiers: true });
+    const d = decompose(fatty, 15, "protein-only", { proteinTiers: true });
     const draw = d.steps.find((s) => s.kind === "draw" && s.label.includes("protein"));
     expect(draw.label).toContain("High-fat protein");
     expect(-draw.fat).toBeCloseTo(24, 10); // all of it, as declared
@@ -299,7 +307,7 @@ describe("protein tiers switch", () => {
     // 14 g protein = 2 exchanges, 6 g fat = 3 g per exchange, the inclusive top
     // of the lean range, so it is lean carrying 3 g rather than the nominal 2 g
     // with the difference spilled into a fat exchange.
-    const d = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", true, { proteinTiers: true });
+    const d = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", { proteinTiers: true });
     const draw = d.steps.find((s) => s.kind === "draw" && s.label.includes("protein"));
     expect(draw.label).toContain("Lean protein");
     expect(-draw.fat).toBeCloseTo(6, 10);
@@ -307,7 +315,7 @@ describe("protein tiers switch", () => {
     expect(d.rf).toBeCloseTo(6, 10); // rebuilds the declared fat exactly
   });
   it("untiered: one Protein exchange carrying exactly the declared fat", () => {
-    const d = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", true, { proteinTiers: false });
+    const d = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", { proteinTiers: false });
     const draw = d.steps.find((s) => s.kind === "draw" && s.label.includes("Protein"));
     expect(draw.label).toContain("Protein");
     expect(draw.label).not.toContain("Lean");
@@ -315,8 +323,8 @@ describe("protein tiers switch", () => {
     expect(d.rounded.some((o) => o.label === "Fat")).toBe(false);
   });
   it("defaults to tiered when no option is passed", () => {
-    const a = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", true);
-    const b = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", true, { proteinTiers: true });
+    const a = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only");
+    const b = decompose({ cho: 0, pro: 14, fat: 6, fibre: 0 }, 15, "protein-only", { proteinTiers: true });
     expect(a.rounded.map((o) => o.label)).toEqual(b.rounded.map((o) => o.label));
   });
 });
@@ -330,7 +338,7 @@ describe("no exchange ever rebuilds more fat than the label declares", () => {
     }
     for (const [p, gid] of cases) {
       for (const proteinTiers of [true, false]) {
-        const d = decompose(p, 15, gid, true, { proteinTiers });
+        const d = decompose(p, 15, gid, { proteinTiers });
         // Rounding can lose fat, never invent it beyond half an exchange of it.
         expect(d.rf).toBeLessThanOrEqual(p.fat + 5 / 2 + 1e-9);
       }

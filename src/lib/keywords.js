@@ -228,6 +228,11 @@ export const KEYWORDS = {
       "κατίκι", "κοπανιστή", "μοτσαρέλα", "ρικότα", "τσένταρ", "ένταμ",
       "γκούντα", "παρμεζάνα", "κότατζ", "αυγό", "αυγά", "ομελέτα",
       "τόφου", "τοφού", "τέμπε",
+      // Cypriot and Greek names the list missed. Halloumi was in the list in
+      // Latin script only, so a pack named in Greek fell through to starch.
+      "χαλούμι", "χαλλούμι", "μπιφτέκι", "κεφτέδ", "σουτζουκάκ", "γύρος",
+      "σουβλάκι", "ξιφίας", "μπαρμπούνι", "γαύρος", "σφυρίδα", "μπακαλιαράκ",
+      "κρόκος αυγού", "ασπράδι",
     ],
     // "ei" is egg in Dutch and German, "vis" is fish in Dutch. Both are short
     // enough to hide inside unrelated words, so they match at a word start
@@ -363,14 +368,55 @@ export const KEYWORDS = {
   // ------------------------------------------------------------- starch ---
   // Bread, cereal, rice, pasta, legumes, starchy vegetables, and the sweets
   // and baked goods that resolve into starch plus fat.
+  // The sweets, desserts and other carbohydrates list. These used to sit inside
+  // the starch list, because starch and sweets both carry 15 g of carbohydrate.
+  // They are separated now because they do not carry the same protein and fat:
+  // a starch exchange is charged 3 g of protein and 1 g of fat, which a soft
+  // drink or a spoon of honey plainly does not have. Membership follows the
+  // list itself, so pancakes, waffles, croissants and bread stay on starch
+  // while doughnuts, muffins and sweet rolls do not.
+  sweet: {
+    any: [
+      // English
+      "sugar", "honey", "jam", "marmalade", "jelly", "syrup", "chocolate",
+      "biscuit", "cookie", "cake", "cupcake", "brownie", "doughnut", "donut",
+      "danish", "pastry", "pudding", "gelatin", "custard", "ice cream",
+      "sorbet", "sherbet", "candy", "sweets", "confectionery",
+      "shortbread", "flapjack", "gingerbread", "madeleine", "macaroon",
+      "meringue", "marshmallow", "toffee", "fudge", "nougat", "liquorice",
+      "jelly bean", "cereal bar", "granola bar", "muffin", "lemonade",
+      "soft drink", "energy drink", "sports drink", "squash", "cordial",
+      "cola", "soda",
+      // Dutch
+      "suiker", "honing", "stroop", "chocolade", "koek", "taart", "gebak",
+      "ijs", "snoep", "gebakje", "roomijs", "limonade", "frisdrank",
+      "ranja", "siroop",
+      // German
+      "zucker", "honig", "marmelade", "konfitüre", "sirup", "schokolade",
+      "keks", "kuchen", "gebäck", "krapfen", "speiseeis", "süßigkeit",
+      "lebkuchen", "stollen", "berliner", "streuselkuchen", "butterkeks",
+      "marzipan", "gummibärchen",
+      // French
+      "sucre", "miel", "confiture", "sirop", "chocolat", "gâteau",
+      "viennoiserie", "beignet", "glace", "pâtisserie", "pain au chocolat",
+      "chausson", "financier", "sablé", "spéculoos", "palmier", "chouquette",
+      "éclair", "millefeuille", "tarte", "clafoutis", "far breton",
+      "kouign-amann", "pain d'épices", "guimauve", "pâte de fruits",
+      "confiserie",
+      // Greek
+      "ζάχαρη", "μέλι", "μαρμελάδα", "σιρόπι", "σοκολάτα", "μπισκότ", "κέικ",
+      "γλυκό", "γλυκά", "ντόνατ", "παγωτό", "σορμπέ", "κρέμα καραμελέ",
+      "μπράουνι", "καραμέλα", "καραμέλες", "ζαχαρωτ", "λουκούμι", "χαλβάς",
+      "μπακλαβάς", "κανταΐφι", "γαλακτομπούρεκο", "λουκουμάδ", "τούρτα",
+      "αναψυκτικό", "λεμονάδα", "πορτοκαλάδα", "κόλα",
+    ],
+  },
   starch: {
     any: [
       // English, bread and cereal
       "wholemeal", "granary", "sourdough", "flatbread", "chapati", "naan",
-      "brioche", "crumpet", "muffin", "scone", "shortbread", "flapjack",
-      "gingerbread", "madeleine", "macaroon", "meringue", "marshmallow",
-      "toffee", "fudge", "nougat", "liquorice", "jelly bean", "cereal bar",
-      "granola bar", "hash brown", "wedges", "crisps", "tortilla chip",
+      "brioche", "crumpet", "scone",
+      "hash brown", "wedges", "crisps", "tortilla chip",
       "poppadom", "prawn cracker", "porridge oats", "pearl barley",
       "buckwheat", "amaranth", "sorghum", "teff", "black bean", "kidney bean",
       "cannellini", "butter bean", "borlotti", "edamame", "split pea",
@@ -387,10 +433,8 @@ export const KEYWORDS = {
       "lentil", "bean", "chickpea", "hummus", "popcorn", "pretzel",
       "butternut", "winter squash", "pumpkin",
       // English, sweets and baked goods
-      "sugar", "honey", "jam", "marmalade", "syrup", "chocolate", "biscuit",
-      "cookie", "cake", "brownie", "doughnut", "donut", "croissant",
-      "pastry", "pancake", "waffle", "ice cream", "sorbet", "pudding",
-      "candy", "sweets",
+      "croissant",
+      "pancake", "waffle",
       // Dutch
       "tarwebrood", "meergranenbrood", "volkorenbrood", "stokbrood",
       "krentenbrood", "krentenbol", "rozijnenbrood", "roggebrood",
@@ -411,8 +455,7 @@ export const KEYWORDS = {
       "griesmeel", "rijst", "noedels", "meel", "aardappel",
       "patat", "friet", "bakbanan", "mais", "maïs", "erwt",
       "linzen", "bruine boon", "witte boon", "kikkererwt", "pompoen",
-      "suiker", "honing", "stroop", "chocolade", "koek",
-      "taart", "gebak", "pannenkoek", "wafel", "ijs", "snoep",
+      "pannenkoek", "wafel",
       // German
       "mehrkornbrötchen", "roggenbrötchen", "roggenmischbrot",
       "roggenvollkornbrot", "weizenmischbrot", "weizenvollkornbrot",
@@ -423,35 +466,28 @@ export const KEYWORDS = {
       "puddingpulver", "teigwaren", "vollkornnudeln", "maisgries",
       "weizengries", "kleieflocken", "kartoffelpüree", "kartoffelknödel",
       "kroketten", "pommes frites", "kartoffelchips", "esskastanie",
-      "lebkuchen", "stollen", "berliner", "streuselkuchen", "butterkeks",
-      "zwiebackbrot", "marzipan", "gummibärchen",
+      "zwiebackbrot",
       "brot", "brötchen", "semmel", "fladenbrot", "knäckebrot", "zwieback",
       "brezel", "müsli", "haferflocken", "hafer", "kleie", "weizen",
       "roggen", "gerste", "dinkel", "grieß", "reis", "nudel", "spätzle",
       "makkaroni", "mehl", "kartoffel", "süßkartoffel", "maniok",
       "kochbanan", "erbse", "linse", "kichererbse", "kürbis",
-      "zucker", "honig", "marmelade", "konfitüre", "sirup", "schokolade",
-      "keks", "kuchen", "gebäck", "krapfen", "pfannkuchen", "waffel",
-      "speiseeis", "süßigkeit", "knödel", "klöße",
+      "pfannkuchen", "waffel",
+      "knödel", "klöße",
       // French
       "pain de mie", "pain complet", "pain aux céréales",
-      "pain au chocolat", "chausson", "financier",
-      "sablé", "spéculoos", "palmier", "chouquette", "éclair", "millefeuille",
-      "tarte", "clafoutis", "far breton", "kouign-amann", "pain d'épices",
       "biscotte", "grissini", "bretzel", "blinis", "chapelure",
       "purée de pomme de terre", "frites", "chips", "gratin dauphinois",
       "pommes duchesse", "pommes noisette", "boulgour", "sarrasin", "millet",
       "sorgho", "amarante", "épeautre", "petit épeautre", "flageolet",
-      "haricot coco", "fève", "guimauve",
-      "pâte de fruits", "confiserie",
+      "haricot coco", "fève",
       "pain", "galette", "croûton", "céréales", "flocons",
       "avoine", "son de blé", "blé", "seigle", "orge",
       "semoule", "riz", "pâtes", "nouille", "farine",
       "pomme de terre", "patate", "manioc", "banane plantain",
       "petit pois", "lentille", "haricot blanc", "haricot rouge",
-      "pois chiche", "courge", "potiron", "sucre", "miel", "confiture",
-      "sirop", "chocolat", "gâteau", "viennoiserie", "beignet",
-      "crêpe", "gaufre", "glace", "pâtisserie",
+      "pois chiche", "courge", "potiron",
+      "crêpe", "gaufre",
       // Greek
       "ψωμί", "ψωμάκι", "αρτοσκεύασμα", "φρυγανιά", "φρυγανιές", "παξιμάδι",
       "κουλούρι", "πίτα", "τορτίγια", "κράκερ", "κριτσίνι", "κρουτόν",
@@ -461,9 +497,8 @@ export const KEYWORDS = {
       "λαζάνια", "αλεύρι", "πατάτα", "πατάτες", "γλυκοπατάτα", "καλαμπόκι",
       "αραβόσιτος", "πολέντα", "αρακάς", "φακές", "φασόλια", "φάβα",
       "ρεβίθια", "όσπρια", "ποπ κορν", "πρέτζελ", "κάστανα", "κολοκύθα",
-      "ζάχαρη", "μέλι", "μαρμελάδα", "σιρόπι", "σοκολάτα", "μπισκότ",
-      "κέικ", "γλυκό", "γλυκά", "κρουασάν", "ντόνατ", "τηγανίτα", "βάφλα",
-      "παγωτό", "σορμπέ", "κρέμα καραμελέ", "πατατάκια", "μπράουνι",
+      "κρουασάν", "τηγανίτα", "βάφλα",
+      "πατατάκια",
     ],
     // "oat" sits inside "goat", German "eis" inside "Fleisch" and "Reis".
     start: ["oat", "eis"],

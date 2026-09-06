@@ -5,9 +5,10 @@ import { inferGroup, decompose } from "./exchange.js";
 // carbohydrate in. This file exists to catch a classifier that passes its own
 // unit tests while getting ordinary food wrong.
 //
-// Sweets is not a group that gets prescribed on its own, so a sugary food is
-// accepted on starch or fruit: what matters is that it decomposes sensibly,
-// with its fat falling out as fat exchanges.
+// A sugary food belongs on the sweets list, or on starch once it carries
+// enough fat or protein to be a food rather than a drink. What matters is that
+// it never lands on fruit, and that it decomposes sensibly with its fat falling
+// out as fat exchanges.
 const FOODS = [
   ["White bread",       { cho: 49, pro: 9, fat: 3.2, fibre: 2.7, sugars: 5 },     ["starch"]],
   ["Cooked white rice", { cho: 28, pro: 2.7, fat: 0.3, fibre: 0.4, sugars: 0.1 }, ["starch"]],
@@ -24,12 +25,12 @@ const FOODS = [
   ["Chicken breast",    { cho: 0, pro: 31, fat: 3.6, fibre: 0, sugars: 0 },       ["protein-only"]],
   ["Cheddar",           { cho: 1.3, pro: 25, fat: 33, fibre: 0, sugars: 0.5 },    ["protein-only"]],
   ["Olive oil",         { cho: 0, pro: 0, fat: 100, fibre: 0, sugars: 0 },        ["fat-only"]],
-  ["Coca-Cola",         { cho: 10.6, pro: 0, fat: 0, fibre: 0, sugars: 10.6 },    ["starch", "fruit"]],
-  ["Table sugar",       { cho: 100, pro: 0, fat: 0, fibre: 0, sugars: 100 },      ["starch", "fruit"]],
-  ["Honey",             { cho: 82, pro: 0.3, fat: 0, fibre: 0.2, sugars: 82 },    ["starch", "fruit"]],
-  ["Milk chocolate",    { cho: 59, pro: 7.6, fat: 30, fibre: 3.4, sugars: 52 },   ["starch", "fruit"]],
-  ["Sponge cake",       { cho: 55, pro: 6, fat: 15, fibre: 1.2, sugars: 30 },     ["starch", "fruit"]],
-  ["Fruit jam",         { cho: 60, pro: 0.4, fat: 0.1, fibre: 1, sugars: 58 },    ["starch", "fruit"]],
+  ["Coca-Cola",         { cho: 10.6, pro: 0, fat: 0, fibre: 0, sugars: 10.6 },    ["sweet"]],
+  ["Table sugar",       { cho: 100, pro: 0, fat: 0, fibre: 0, sugars: 100 },      ["sweet"]],
+  ["Honey",             { cho: 82, pro: 0.3, fat: 0, fibre: 0.2, sugars: 82 },    ["sweet"]],
+  ["Milk chocolate",    { cho: 59, pro: 7.6, fat: 30, fibre: 3.4, sugars: 52 },   ["sweet"]],
+  ["Sponge cake",       { cho: 55, pro: 6, fat: 15, fibre: 1.2, sugars: 30 },     ["sweet"]],
+  ["Fruit jam",         { cho: 60, pro: 0.4, fat: 0.1, fibre: 1, sugars: 58 },    ["fruit"]],
 ];
 
 describe("real foods land in the group a dietitian would choose", () => {
@@ -39,10 +40,14 @@ describe("real foods land in the group a dietitian would choose", () => {
     });
   }
   it("classifies the same way when the name is useless", () => {
-    // The composition rules carry foods the keyword lists cannot name. Fruit
-    // juice is the known exception: with no fibre it is not separable from
-    // sugar water by composition, so it needs its name.
-    const nameless = FOODS.filter(([n]) => n !== "Orange juice");
+    // The composition rules carry foods the keyword lists cannot name. The
+    // exceptions are foods whose group is only knowable from the name. Fruit
+    // juice, with no fibre, is not separable from sugar water by composition.
+    // A cake and a chocolate bar are carbohydrate with fat on top, which is
+    // what a starch dish looks like too. Jam reads as fruit because it is
+    // named as fruit, and by composition alone it is a sugar.
+    const NAME_ONLY = ["Orange juice", "Milk chocolate", "Sponge cake", "Fruit jam"];
+    const nameless = FOODS.filter(([n]) => !NAME_ONLY.includes(n));
     const wrong = nameless.filter(([, p, allowed]) => !allowed.includes(inferGroup(p, "product 12345")));
     expect(wrong.map(([n]) => n)).toEqual([]);
   });
@@ -50,16 +55,18 @@ describe("real foods land in the group a dietitian would choose", () => {
 
 describe("a sugary food decomposes into carbohydrate plus its fat", () => {
   it("chocolate and cake yield a carbohydrate group and fat exchanges", () => {
+    // Both are on the sweets list, which carries no fat of its own, so all of
+    // their fat has to come out as separate fat exchanges.
     for (const name of ["Milk chocolate", "Sponge cake"]) {
       const [, p] = FOODS.find(([n]) => n === name);
-      const d = decompose(p, 15, inferGroup(p, name), true);
+      const d = decompose(p, 15, inferGroup(p, name));
       expect(d.rounded.some((o) => o.ref.cho > 0)).toBe(true);
       expect(d.rounded.some((o) => o.label === "Fat")).toBe(true);
     }
   });
   it("a fat-free sugary food yields carbohydrate and nothing else", () => {
     const [, p] = FOODS.find(([n]) => n === "Table sugar");
-    const d = decompose(p, 15, inferGroup(p, "Table sugar"), true);
+    const d = decompose(p, 15, inferGroup(p, "Table sugar"));
     expect(d.rounded.every((o) => o.ref.cho > 0)).toBe(true);
   });
 });
@@ -67,18 +74,19 @@ describe("a sugary food decomposes into carbohydrate plus its fat", () => {
 describe("a flavour word in a name is not the food", () => {
   // Fruit and dairy words turn up constantly as flavours. Reading them as the
   // food puts pie, bread and lemonade on the fruit list, which is the single
-  // easiest way for this app to mislead someone.
+  // easiest way for this app to mislead someone. The sugary drinks land on the
+  // sweets list, which is where the exchange list puts them.
   const cases = [
     ["Apple pie",            { cho: 34, pro: 3, fat: 11, fibre: 1.4, sugars: 15 },   "starch"],
     ["Apple crumble",        { cho: 40, pro: 3, fat: 12, fibre: 2, sugars: 22 },     "starch"],
     ["Banana bread",         { cho: 48, pro: 6, fat: 15, fibre: 2, sugars: 28 },     "starch"],
     ["Raspberry cheesecake", { cho: 30, pro: 5, fat: 22, fibre: 1, sugars: 22 },     "starch"],
-    ["Lemonade",             { cho: 10, pro: 0, fat: 0, fibre: 0, sugars: 10 },      "starch"],
-    ["Cherry cola",          { cho: 11, pro: 0, fat: 0, fibre: 0, sugars: 11 },      "starch"],
-    ["Fruit squash",         { cho: 10, pro: 0, fat: 0, fibre: 0, sugars: 10 },      "starch"],
+    ["Lemonade",             { cho: 10, pro: 0, fat: 0, fibre: 0, sugars: 10 },      "sweet"],
+    ["Cherry cola",          { cho: 11, pro: 0, fat: 0, fibre: 0, sugars: 11 },      "sweet"],
+    ["Fruit squash",         { cho: 10, pro: 0, fat: 0, fibre: 0, sugars: 10 },      "sweet"],
     ["Strawberry yoghurt",   { cho: 14, pro: 3.5, fat: 2.8, fibre: 0.3, sugars: 14 },"milk"],
     ["Banana milkshake",     { cho: 12, pro: 3.2, fat: 2.5, fibre: 0.2, sugars: 11 },"milk"],
-    ["Milk chocolate",       { cho: 59, pro: 7.6, fat: 30, fibre: 3.4, sugars: 52 }, "starch"],
+    ["Milk chocolate",       { cho: 59, pro: 7.6, fat: 30, fibre: 3.4, sugars: 52 }, "sweet"],
   ];
   for (const [name, p, want] of cases) {
     it(`${name} -> ${want}`, () => expect(inferGroup(p, name)).toBe(want));
