@@ -1,12 +1,12 @@
 # CarbX
 
-Web-based Exchange-list calculator for diabetes and kidney diets in 5 languages.
+Web-based exchange-list calculator for diabetes, kidney and weight loss diets in 5 languages.
 
 ### [carbx.gmiliarakis.com](https://carbx.gmiliarakis.com)
 
 
 
-✅ no account\
+✅ no account needed\
 ✅ no backend\
 ✅ no API keys\
 ✅ no data stored\
