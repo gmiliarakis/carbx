@@ -21,7 +21,7 @@ ii. **Paste the text** copied off a pack, a website or a
 database entry in English, Dutch, German,
 French and Greek.\
 iii. **Read from photo** with local OCR\
-v. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German and French databases.
+iv. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German and French databases.
 
 **2. Set the portion size and convention.** Portion in grams, and 15 g, 12 g or 10 g of carbohydrate per exchange.
 
