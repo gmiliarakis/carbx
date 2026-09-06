@@ -111,8 +111,8 @@ const CSS = `
   font-family:var(--mono); font-size:10.5px; color:var(--muted); line-height:1.7}
 .of-method b{color:var(--ink); font-weight:600}
 .of-empty{color:var(--muted); font-size:13px; margin-top:22px; max-width:56ch; line-height:1.65}
-.of-foot{margin-top:auto; padding-top:22px; font-family:var(--mono); font-size:10.5px;
-  letter-spacing:.06em; color:var(--muted)}
+.of-foot{margin-top:auto; padding-top:22px; text-align:right; font-family:var(--mono);
+  font-size:10.5px; letter-spacing:.06em; color:var(--muted)}
 
 .of-labrow{display:flex; align-items:center; gap:6px}
 .of-check{display:flex; align-items:center; gap:7px; margin-top:10px; font-size:12px; color:#4E5257}
