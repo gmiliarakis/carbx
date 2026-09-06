@@ -7,61 +7,64 @@ import { decompose, gramsPerExchange, inferGroup, parseNutritionText, scanIngred
 
 const CSS = `
 .of-root{
-  --chassis:#22262B; --chassis2:#2B3037; --chassis3:#363C44;
-  --sheet:#FBFBF9; --ink:#14171A; --rule:#D9DBD5; --rule2:#EDEEE9;
-  --muted:#6B7178; --muted2:#9AA0A6;
-  --signal:#0F6E63; --signal-w:#E3F0EE;
+  --bar:#22262B;
+  --rail:#F0EEE8; --field:#FFFFFF; --line:#D5D2C9; --line2:#E3E0D8; --raise:#E6E3DB;
+  --sheet:#FBFBF9; --ink:#1F2225; --rule:#D9DBD5; --rule2:#EDEEE9;
+  --muted:#6E7278; --muted2:#8A8F94;
+  --signal:#1F2225; --signal-w:#EDEBE4;
   --warn:#B4690E; --warn-w:#FBF0DE;
   --alert:#A3231C; --alert-w:#FBE7E5;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-  background:var(--chassis); color:var(--sheet);
-  font-family:var(--sans); font-size:14px; line-height:1.45; min-height:100%;
+  background:var(--sheet); color:var(--ink);
+  font-family:var(--sans); font-size:14px; line-height:1.45;
+  min-height:100vh; display:flex; flex-direction:column;
   -webkit-font-smoothing:antialiased;
 }
 .of-root *{box-sizing:border-box}
 .of-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
-  padding:18px 22px 14px; border-bottom:1px solid var(--chassis3)}
+  padding:18px 22px 14px; background:var(--bar); color:var(--sheet)}
 .of-title{font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase; font-weight:600}
-.of-sub{font-size:12px; color:var(--muted2); font-family:var(--mono)}
-.of-grid{display:grid; grid-template-columns:340px 1fr; align-items:stretch}
+.of-grid{display:grid; grid-template-columns:340px 1fr; align-items:stretch; flex:1 1 auto}
 @media (max-width:880px){ .of-grid{grid-template-columns:1fr} }
-.of-rail{padding:16px 20px 40px; border-right:1px solid var(--chassis3); background:#E7E9E4}
-.of-rail .of-legend,.of-rail .of-lab{color:#5C6167}
-.of-rail .of-hint{color:#585D63}
+.of-rail{padding:16px 20px 40px; border-right:1px solid var(--line); background:var(--rail)}
 .of-legend{font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--muted2); padding-bottom:7px; margin-bottom:11px; border-bottom:1px solid var(--chassis3)}
+  color:var(--muted); padding-bottom:7px; margin-bottom:11px; border-bottom:1px solid var(--line)}
 .of-sect{margin-bottom:22px}
 .of-lab{display:block; font-family:var(--mono); font-size:10px; letter-spacing:.09em;
-  text-transform:uppercase; color:var(--muted2); margin-bottom:4px}
-.of-in,.of-sel,.of-ta{width:100%; background:var(--chassis2); color:var(--sheet); border:1px solid var(--chassis3);
+  text-transform:uppercase; color:var(--muted); margin-bottom:4px}
+.of-in,.of-sel,.of-ta{width:100%; background:var(--field); color:var(--ink); border:1px solid var(--line);
   border-radius:2px; padding:7px 8px; font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums}
 .of-ta{resize:vertical; line-height:1.5; font-size:12px}
 .of-in:focus,.of-sel:focus,.of-ta:focus{outline:2px solid var(--signal); outline-offset:1px; border-color:var(--signal)}
-.of-in::placeholder,.of-ta::placeholder{color:#5A6068}
+.of-in::placeholder,.of-ta::placeholder{color:#A4A8A2}
 .of-row{display:flex; gap:8px; margin-bottom:8px}
 .of-f{flex:1; min-width:0}
-.of-btn{width:100%; background:var(--signal); color:#fff; border:0; border-radius:2px; padding:8px;
+.of-btn{width:100%; background:var(--signal); color:#fff; border:1px solid var(--signal); border-radius:2px; padding:8px;
   font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; margin-top:9px}
-.of-btn.ghost{background:var(--chassis2); border:1px solid var(--chassis3); color:var(--muted2)}
-.of-btn:disabled{background:var(--chassis3); color:var(--muted); cursor:default}
-.of-btn:focus-visible{outline:2px solid var(--sheet); outline-offset:2px}
-.of-seg{display:flex; border:1px solid var(--chassis3); border-radius:2px; overflow:hidden; margin-bottom:10px; flex-wrap:wrap}
-.of-seg button{flex:1 1 0; min-width:64px; background:var(--chassis2); color:var(--muted2); border:0; padding:7px 3px;
+.of-btn.ghost{background:var(--field); border-color:var(--line); color:var(--muted)}
+.of-btn.ghost:hover{border-color:var(--muted); color:var(--ink)}
+.of-btn:disabled{background:var(--raise); border-color:var(--line); color:var(--muted2); cursor:default}
+.of-btn:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+.of-seg{display:flex; border:1px solid var(--line); border-radius:2px; overflow:hidden; margin-bottom:10px; flex-wrap:wrap}
+.of-seg button{flex:1 1 0; min-width:64px; background:var(--field); color:var(--muted); border:0; padding:7px 3px;
   cursor:pointer; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
-.of-seg button+button{border-left:1px solid var(--chassis3)}
-.of-seg button[data-on="1"]{background:var(--signal); color:#fff}
+.of-seg button:hover{background:var(--raise); color:var(--ink)}
+.of-seg button+button{border-left:1px solid var(--line)}
+.of-seg button[data-on="1"],.of-seg button[data-on="1"]:hover{background:var(--signal); color:#fff}
 .of-hint{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.45}
-.of-warnbox{font-size:11.5px; line-height:1.5; color:#E8C48A; background:#332A1A;
+.of-warnbox{font-size:11.5px; line-height:1.5; color:#5C3705; background:var(--warn-w);
   border-left:2px solid var(--warn); padding:8px 10px; margin-top:9px}
-.of-res{margin-top:10px; max-height:250px; overflow:auto; border:1px solid var(--chassis3); border-radius:2px}
-.of-item{display:block; width:100%; text-align:left; background:var(--chassis2); border:0;
-  border-bottom:1px solid var(--chassis3); padding:8px 10px; cursor:pointer; color:var(--sheet)}
-.of-item:hover,.of-item:focus-visible{background:var(--chassis3); outline:none}
+.of-res{margin-top:10px; max-height:250px; overflow:auto; border:1px solid var(--line); border-radius:2px}
+.of-item{display:block; width:100%; text-align:left; background:var(--field); border:0;
+  border-bottom:1px solid var(--line2); padding:8px 10px; cursor:pointer; color:var(--ink)}
+.of-item:hover,.of-item:focus-visible{background:var(--raise); outline:none}
 .of-item .n{font-size:12.5px; line-height:1.3}
-.of-item .b{font-family:var(--mono); font-size:10.5px; color:var(--muted2); margin-top:2px}
+.of-item .b{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:2px}
 
-.of-sheet{background:var(--sheet); color:var(--ink); min-height:100%; padding:20px 24px 44px}
+.of-sheet{background:var(--sheet); color:var(--ink); min-height:100%; padding:20px 24px 32px;
+  display:flex; flex-direction:column}
+.of-sheet>*{flex:0 0 auto}
 .of-shead{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
   border-bottom:2px solid var(--ink); padding-bottom:7px; margin-bottom:10px; flex-wrap:wrap}
 .of-shead h2{margin:0; font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase}
@@ -78,8 +81,7 @@ const CSS = `
 .of-ledger th:first-child{text-align:left}
 .of-ledger td{font-size:12.5px; padding:7px; text-align:right; border-bottom:1px solid var(--rule2)}
 .of-ledger td:first-child{text-align:left; font-family:var(--sans)}
-.of-ledger tr[data-kind="draw"] td{color:var(--signal)}
-.of-ledger tr[data-kind="draw"] td:first-child{font-weight:600}
+.of-ledger tr[data-kind="draw"] td{color:var(--ink); font-weight:600}
 .of-ledger tr[data-kind="res"] td{color:var(--muted); font-style:italic}
 .of-ledger tr[data-kind="tot"] td{border-top:2px solid var(--ink); border-bottom:0; font-weight:700; font-size:13.5px; padding-top:9px}
 
@@ -102,19 +104,45 @@ const CSS = `
 .of-note b{font-family:var(--mono); font-size:12px}
 .of-note.w{background:var(--warn-w); border-color:var(--warn); color:#5C3705}
 .of-note.a{background:var(--alert-w); border-color:var(--alert); color:#5E1310}
-.of-note.i{background:var(--signal-w); border-color:var(--signal); color:#0A413A}
+.of-note.i{background:var(--signal-w); border-color:var(--ink); color:#2B2F33}
 .of-hit{font-family:var(--mono); font-size:11.5px; display:inline-block; padding:2px 6px; margin:2px 4px 2px 0;
   border:1px solid currentColor; border-radius:2px}
 .of-method{margin-top:24px; padding-top:12px; border-top:1px solid var(--rule);
   font-family:var(--mono); font-size:10.5px; color:var(--muted); line-height:1.7}
 .of-method b{color:var(--ink); font-weight:600}
 .of-empty{color:var(--muted); font-size:13px; margin-top:22px; max-width:56ch; line-height:1.65}
+.of-foot{margin-top:auto; padding-top:22px; font-family:var(--mono); font-size:10.5px;
+  letter-spacing:.06em; color:var(--muted)}
+
+.of-labrow{display:flex; align-items:center; gap:6px}
+.of-check{display:flex; align-items:center; gap:7px; margin-top:10px; font-size:12px; color:#4E5257}
+.of-check label{display:flex; align-items:center; gap:8px; cursor:pointer}
+.of-help{position:relative; display:inline-flex; align-items:center}
+.of-help>button{width:15px; height:15px; padding:0; border-radius:50%; border:1px solid currentColor;
+  background:none; color:inherit; font-family:var(--mono); font-size:10px; line-height:1; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; opacity:.55}
+.of-help>button:hover,.of-help>button[aria-expanded="true"]{opacity:1}
+.of-help>button:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+.of-help .pop{position:absolute; z-index:30; top:21px; left:-10px; width:236px; padding:9px 11px;
+  background:var(--bar); color:var(--sheet); border-radius:2px;
+  font-family:var(--sans); font-size:11.5px; line-height:1.5; letter-spacing:0; text-transform:none;
+  font-weight:400; box-shadow:0 6px 20px rgba(31,34,37,.22)}
 `;
 
 function Note({ kind, title, children }) {
   return (<div className={"of-note " + kind}>
     <span style={{ fontFamily: "var(--mono)", fontWeight: 700 }}>{kind === "a" ? "!!" : kind === "w" ? "!" : "i"}</span>
     <span>{title && <b>{title}: </b>}{children}</span></div>);
+}
+function Help({ label, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="of-help" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button type="button" aria-label={label} aria-expanded={open}
+        onClick={() => setOpen(true)} onBlur={() => setOpen(false)}
+        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>?</button>
+      {open && <span className="pop" role="tooltip">{children}</span>}
+    </span>);
 }
 function Line({ flag = "", name, sub, value, unit }) {
   const c = flag === "a" ? "var(--alert)" : flag === "w" ? "var(--warn)" : "var(--ink)";
@@ -125,12 +153,6 @@ function Line({ flag = "", name, sub, value, unit }) {
 }
 
 const BLANK = { name: "", cho: "", pro: "", fat: "", fibre: "", sugars: "", sfa: "", salt: "", k: "", p: "", kcal: "", ing: "" };
-
-const FIXTURES = [
-  { n: "Test: starch + fat", v: { name: "Test: crackers", cho: "62", pro: "9", fat: "14", fibre: "4", sugars: "3", sfa: "6", salt: "1.4", k: "", p: "", kcal: "418", ing: "wheat flour, palm oil, salt, raising agent (E450, E500), sugar" } },
-  { n: "Test: protein + fat", v: { name: "Test: sliced ham", cho: "1.2", pro: "19", fat: "9", fibre: "0", sugars: "1", sfa: "3.4", salt: "2.2", k: "320", p: "", kcal: "163", ing: "pork, water, salt, stabilisers (E451, E452), potassium chloride, sodium nitrite (E250)" } },
-  { n: "Test: milk group", v: { name: "Test: semi-skimmed yoghurt", cho: "6.5", pro: "4.2", fat: "1.6", fibre: "0", sugars: "6.5", sfa: "1.0", salt: "0.13", k: "180", p: "120", kcal: "56", ing: "semi-skimmed milk, yoghurt cultures" } },
-];
 
 export default function ExchangeLookup() {
   const [src, setSrc] = useState("hand");
@@ -216,7 +238,7 @@ export default function ExchangeLookup() {
       salt: s(N.salt_100g != null ? N.salt_100g : num(N.sodium_100g) != null ? N.sodium_100g * 2.5 : null),
       k: s(N.potassium_100g), p: s(N.phosphorus_100g), kcal: s(N["energy-kcal_100g"]), ing: p.ingredients_text || "" });
     setSrc("hand"); setParsed(true);
-    setMsg("Pulled from Open Food Facts, which is crowd-sourced and unverified. Check the figures against the pack.");
+    setMsg("Open Food Facts is crowd-sourced and unverified. Check the figures against the pack.");
   };
 
   // computation
@@ -249,7 +271,6 @@ export default function ExchangeLookup() {
       <style>{CSS}</style>
       <div className="of-head">
         <span className="of-title">CarbX</span>
-        <span className="of-sub" style={{ marginLeft: "auto" }}>decision support · verify before use</span>
       </div>
 
       <div className="of-grid">
@@ -257,10 +278,10 @@ export default function ExchangeLookup() {
           <div className="of-sect">
             <div className="of-legend">Source</div>
             <div className="of-seg">
-              <button data-on={src === "hand" ? 1 : 0} onClick={() => setSrc("hand")}>By hand</button>
-              <button data-on={src === "paste" ? 1 : 0} onClick={() => setSrc("paste")}>Paste label</button>
+              <button data-on={src === "hand" ? 1 : 0} onClick={() => setSrc("hand")}>Manual</button>
+              <button data-on={src === "paste" ? 1 : 0} onClick={() => setSrc("paste")}>Text</button>
               <button data-on={src === "photo" ? 1 : 0} onClick={() => setSrc("photo")}>Photo</button>
-              <button data-on={src === "off" ? 1 : 0} onClick={() => setSrc("off")}>OFF</button>
+              <button data-on={src === "off" ? 1 : 0} onClick={() => setSrc("off")}>Database</button>
             </div>
 
             {src === "paste" && (<>
@@ -341,13 +362,7 @@ export default function ExchangeLookup() {
               <span className="of-lab" style={{ marginTop: 6 }}>Ingredients list</span>
               <textarea className="of-ta" rows={3} value={rec.ing} onChange={(e) => set("ing", e.target.value)}
                         placeholder="paste for the additive scan" />
-              <div className="of-row" style={{ marginTop: 9 }}>
-                <select className="of-sel" value="" onChange={(e) => { const f = FIXTURES[e.target.value]; if (f) { setRec(f.v); setParsed(false); } }}>
-                  <option value="">Load a test food…</option>
-                  {FIXTURES.map((f, i) => <option key={i} value={i}>{f.n}</option>)}
-                </select>
-              </div>
-              <button className="of-btn ghost" onClick={() => { setRec(BLANK); setParsed(false); setMsg(""); }}>Clear</button>
+              <button className="of-btn ghost" style={{ marginTop: 12 }} onClick={() => { setRec(BLANK); setParsed(false); setMsg(""); }}>Clear</button>
             </>)}
 
             {msg && <div className="of-warnbox">{msg}</div>}
@@ -363,23 +378,39 @@ export default function ExchangeLookup() {
                   <option value={15}>15 g · US</option><option value={12}>12 g · BE</option><option value={10}>10 g · KE/NL</option>
                 </select></div>
             </div>
-            <span className="of-lab">Carbohydrate group</span>
+            <span className="of-lab of-labrow">
+              Type of food
+              <Help label="What type of food means">
+                Which exchange list the carbohydrate is counted from: starch, fruit, milk, vegetables or sweets.
+                Each list carries a different amount of protein and fat per exchange, so this changes the result.
+                Auto picks the list from the figures and the name. Set it yourself if you disagree.
+              </Help>
+            </span>
             <select className="of-sel" value={override} onChange={(e) => setOverride(e.target.value)}>
               <option value="">Auto{view ? `: ${GLABEL[view.auto]}` : ""}</option>
               {Object.entries(GLABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontSize: 12, color: "#5C6167", cursor: "pointer" }}>
-              <input type="checkbox" checked={subFibre} onChange={(e) => setSubFibre(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
-              <span>Net off fibre when over 5 g</span>
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 12, color: "#5C6167", cursor: "pointer" }}>
-              <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
-              <span>Protein list has fat tiers</span>
-            </label>
-            <p className="of-hint">
-              On for a list with lean, medium-fat and high-fat protein, off for a single protein
-              category. Naming only, the figures are the same either way.
-            </p>
+            <div className="of-check">
+              <label>
+                <input type="checkbox" checked={subFibre} onChange={(e) => setSubFibre(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
+                <span>Take fibre out of the carbs</span>
+              </label>
+              <Help label="What taking fibre out of the carbs means">
+                Fibre is a carbohydrate the body does not absorb. With this on, fibre is subtracted from the
+                carbohydrate total before the exchanges are worked out, but only when the portion holds more
+                than 5 g of it.
+              </Help>
+            </div>
+            <div className="of-check">
+              <label>
+                <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
+                <span>Protein list has fat tiers</span>
+              </label>
+              <Help label="What protein fat tiers means">
+                On for a list that separates lean, medium-fat and high-fat protein. Off for a single protein
+                category. This changes the names only, the figures stay the same either way.
+              </Help>
+            </div>
           </div>
         </div>
 
@@ -469,7 +500,7 @@ export default function ExchangeLookup() {
               {rec.ing.trim() && view.scans.length === 0 && (
                 <Note kind="i" title="Nothing flagged">
                   No phosphate, potassium, sodium or added-sugar terms matched. The scan reads text, so an unlisted or
-                  differently-worded additive will slip past it.
+                  differently-worded additive will be missed.
                 </Note>)}
               {view.scans.map((s) => (
                 <Note key={s.id} kind={s.cls} title={s.title}>
@@ -499,6 +530,8 @@ export default function ExchangeLookup() {
               and Greek. Anything worded outside those lists is not detected.
             </div>
           </>)}
+
+          <div className="of-foot">Check before use.</div>
         </div>
       </div>
     </div>

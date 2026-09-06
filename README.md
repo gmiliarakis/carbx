@@ -160,7 +160,7 @@ npm install
 npm run dev
 ```
 
-`npm test` runs 99 vitest cases\
+`npm test` runs 267 vitest cases\
  `npm run lint` runs oxlint\
  `npm run build`
 writes a static site to `dist/`.
