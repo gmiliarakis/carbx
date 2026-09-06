@@ -152,6 +152,20 @@ function Line({ flag = "", name, sub, value, unit }) {
     <span className="of-vl" style={{ color: c }}>{value}{unit && <u>{unit}</u>}</span></div>);
 }
 
+function plainFlags({ pp, na, scans }) {
+  const out = [];
+  if (na > 500) out.push({ id: "na", cls: "a", text: `High in salt, ${r0(na)} mg sodium in this portion.` });
+  else if (na > 250) out.push({ id: "na", cls: "w", text: `Salty, ${r0(na)} mg sodium in this portion.` });
+  if (pp.sugars > 15) out.push({ id: "sug", cls: "w", text: `${r1(pp.sugars)} g sugar in this portion.` });
+  if (pp.sfa > 5) out.push({ id: "sfa", cls: "w", text: `${r1(pp.sfa)} g saturated fat in this portion.` });
+  if (pp.fibre < 3) out.push({ id: "fib", cls: "w", text: `Low in fibre, ${r1(pp.fibre)} g in this portion.` });
+  if (pp.k != null && pp.k > 200) out.push({ id: "k", cls: "w", text: `High in potassium, ${r0(pp.k)} mg in this portion.` });
+  if (pp.p != null && pp.pro > 0 && pp.p / pp.pro > 12)
+    out.push({ id: "p", cls: "w", text: `High in phosphorus for the protein it carries, ${r0(pp.p)} mg in this portion.` });
+  scans.forEach((sc) => out.push({ id: "scan-" + sc.id, cls: sc.cls, text: `${sc.title}: ${sc.hits.join(", ")}.` }));
+  return out;
+}
+
 const BLANK = { name: "", cho: "", pro: "", fat: "", fibre: "", sugars: "", sfa: "", salt: "", k: "", p: "", kcal: "", ing: "" };
 
 export default function ExchangeLookup() {
@@ -171,6 +185,7 @@ export default function ExchangeLookup() {
   const [proTiers, setProTiers] = useState(true);
   const [override, setOverride] = useState("");
   const [ocrLang, setOcrLang] = useState("eng+nld+deu+fra+ell");
+  const [detail, setDetail] = useState(false);
 
   const set = (k, v) => { setRec((r) => ({ ...r, [k]: v })); setParsed(false); };
   const g = (k) => parseFloat(rec[k]) || 0;
@@ -262,6 +277,17 @@ export default function ExchangeLookup() {
     const na = pp.salt * 400;
     view = { pp, auto, gid, dec, rkcal, drift, na, scans: scanIngredients(rec.ing) };
   }
+
+  const cards = view && (
+    <div className="of-cards">
+      {view.dec.rounded.length === 0
+        ? <div className="of-card"><div className="k">Result</div><div className="v">0</div>
+            <div className="s">under half an exchange, free food</div></div>
+        : view.dec.rounded.map((o) => (
+            <div className="of-card" key={o.label}>
+              <div className="k">{o.label}</div><div className="v">{o.ex}</div>
+              <div className="s">exchange{o.ex === 1 ? "" : "s"}{o.gpe ? ` · ${r0(o.gpe)} g/ex` : ""}</div></div>))}
+    </div>);
 
   const GLABEL = { starch: "Starch", fruit: "Fruit", milk: "Milk", veg: "Non-starchy veg",
                    sweet: "Sweets / other CHO", "protein-only": "Protein only", "fat-only": "Fat only" };
@@ -412,23 +438,45 @@ export default function ExchangeLookup() {
               </Help>
             </div>
           </div>
+
+          <div className="of-sect">
+            <div className="of-legend">View</div>
+            <div className="of-seg">
+              <button data-on={!detail ? 1 : 0} onClick={() => setDetail(false)}>Simple</button>
+              <button data-on={detail ? 1 : 0} onClick={() => setDetail(true)}>Full</button>
+            </div>
+            <p className="of-hint">Simple gives the exchanges and anything flagged. Full adds the ledger, every
+              value behind the flags, and the method.</p>
+          </div>
         </div>
 
         {/* sheet */}
         <div className="of-sheet">
           <div className="of-shead">
-            <h2>Decomposition</h2>
+            <h2>{detail ? "Decomposition" : "Exchanges"}</h2>
             {view && <span className="of-stamp">{r0(size)} g · {unit} g CHO per unit</span>}
           </div>
 
           {!view && (
             <p className="of-empty">
-              Enter a food for its exchange decomposition and condition flags. Paste an ingredients list too, it
-              also scans for phosphate and potassium additives.
+              {detail
+                ? "Enter a food for its exchange decomposition and condition flags. Paste an ingredients list too, it also scans for phosphate and potassium additives."
+                : "Enter a food to see how many exchanges the portion holds, and anything worth knowing about it."}
             </p>
           )}
 
-          {view && (<>
+          {view && !detail && (<>
+            <div className="of-pname">{rec.name || "Unnamed food"}</div>
+            <div className="of-pbrand">{r0(size)} g portion</div>
+            <div style={{ marginTop: 16 }}>{cards}</div>
+            <div className="of-block">
+              {plainFlags(view).length === 0
+                ? <Note kind="i">Nothing flagged in this portion.</Note>
+                : plainFlags(view).map((f) => <Note key={f.id} kind={f.cls}>{f.text}</Note>)}
+            </div>
+          </>)}
+
+          {view && detail && (<>
             <div className="of-pname">{rec.name || "Unnamed food"}</div>
             <div className="of-pbrand">
               {parsed ? "transcribed, check against pack" : "entered by hand"} · classified as {GLABEL[view.gid]}
@@ -452,15 +500,7 @@ export default function ExchangeLookup() {
                 </tbody>
               </table>
 
-              <div className="of-cards" style={{ marginTop: 14 }}>
-                {view.dec.rounded.length === 0
-                  ? <div className="of-card"><div className="k">Result</div><div className="v">0</div>
-                      <div className="s">under half an exchange, free food</div></div>
-                  : view.dec.rounded.map((o) => (
-                      <div className="of-card" key={o.label}>
-                        <div className="k">{o.label}</div><div className="v">{o.ex}</div>
-                        <div className="s">exchange{o.ex === 1 ? "" : "s"}{o.gpe ? ` · ${r0(o.gpe)} g/ex` : ""}</div></div>))}
-              </div>
+              <div style={{ marginTop: 14 }}>{cards}</div>
 
               <div style={{ marginTop: 12 }}>
                 <Line flag={Math.abs(view.drift) > 10 ? "w" : ""} name="Reconciliation"
