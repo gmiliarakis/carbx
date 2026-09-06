@@ -8,7 +8,7 @@ function hitsFor(result, id) {
   return result.find((s) => s.id === id)?.hits ?? [];
 }
 
-describe("scanIngredients() - phosphate additives", () => {
+describe("scanIngredients(): phosphate additives", () => {
   it("matches E-numbers from the phosphate list", () => {
     expect(hitsFor(scanIngredients("stabiliser E450"), "phos")).toContain("E450");
     expect(hitsFor(scanIngredients("E452"), "phos")).toContain("E452");
@@ -28,7 +28,7 @@ describe("scanIngredients() - phosphate additives", () => {
   });
 });
 
-describe("scanIngredients() - potassium additives", () => {
+describe("scanIngredients(): potassium additives", () => {
   it("matches E-numbers from the potassium list", () => {
     expect(hitsFor(scanIngredients("E508"), "pot")).toContain("E508");
   });
@@ -46,7 +46,7 @@ describe("scanIngredients() - potassium additives", () => {
   });
 });
 
-describe("scanIngredients() - added sugar sources (no E-numbers in this category)", () => {
+describe("scanIngredients(): added sugar sources (no E-numbers in this category)", () => {
   it("matches common syrup/sweetener names", () => {
     expect(hitsFor(scanIngredients("glucose-fructose syrup"), "sug").length).toBeGreaterThan(0);
     expect(hitsFor(scanIngredients("corn syrup"), "sug").length).toBeGreaterThan(0);
@@ -60,13 +60,13 @@ describe("scanIngredients() - added sugar sources (no E-numbers in this category
     expect(hitsFor(scanIngredients("μέλι"), "sug").length).toBeGreaterThan(0);
   });
   it("does not flag a plain E-number here (this category has none)", () => {
-    // E100 isn't in any list, but confirms the "sug" scanner has no e-regex to match against at all
+    // E100 is in no list, and the "sug" scanner has no E-number regex at all
     const s = scanIngredients("E100");
     expect(s.find((x) => x.id === "sug")).toBeUndefined();
   });
 });
 
-describe("scanIngredients() - sodium-bearing additives", () => {
+describe("scanIngredients(): sodium-bearing additives", () => {
   it("matches E-numbers from the sodium list", () => {
     expect(hitsFor(scanIngredients("E250"), "na")).toContain("E250");
     expect(hitsFor(scanIngredients("E621"), "na")).toContain("E621");
@@ -81,9 +81,9 @@ describe("scanIngredients() - sodium-bearing additives", () => {
   });
 });
 
-describe("scanIngredients() - E-number boundary safety", () => {
+describe("scanIngredients(): E-number boundary safety", () => {
   it("does not match a listed number embedded inside a longer, unlisted number", () => {
-    // "E4500" is not E450 - the \b after the digit group must reject this
+    // "E4500" is not E450, and the \b after the digit group must reject it
     expect(scanIngredients("E4500 preservative")).toEqual([]);
   });
   it("does not match a bare number with no E prefix", () => {
@@ -91,7 +91,7 @@ describe("scanIngredients() - E-number boundary safety", () => {
   });
 });
 
-describe("scanIngredients() - multi-category input, dedup, and the app's own fixtures", () => {
+describe("scanIngredients(): multi-category input, dedup, and the app's own fixtures", () => {
   it("flags multiple categories in one ingredients list, each with its own hits", () => {
     const s = scanIngredients("pork, water, salt, stabilisers (E451, E452), potassium chloride, sodium nitrite (E250)");
     expect(idsOf(s)).toEqual(["na", "phos", "pot"]);
@@ -107,12 +107,12 @@ describe("scanIngredients() - multi-category input, dedup, and the app's own fix
   });
   it("matches the crackers fixture (phosphate additives only)", () => {
     const s = scanIngredients("wheat flour, palm oil, salt, raising agent (E450, E500), sugar");
-    // E500 is sodium bicarbonate -> "na" category too
+    // E500 is sodium bicarbonate, so the "na" category matches too
     expect(idsOf(s)).toEqual(["na", "phos"]);
   });
 });
 
-describe("scanIngredients() - empty/short input", () => {
+describe("scanIngredients(): empty/short input", () => {
   it("returns [] for an empty string", () => {
     expect(scanIngredients("")).toEqual([]);
   });
@@ -125,5 +125,41 @@ describe("scanIngredients() - empty/short input", () => {
   });
   it("returns [] when nothing in the text matches any category", () => {
     expect(scanIngredients("water, salt, black pepper")).toEqual([]);
+  });
+});
+
+describe("scanIngredients(): German and French additive names", () => {
+  // The label parser reads five languages, so the scanner has to as well.
+  // German and Dutch usually differ by a trailing vowel only.
+  const cases = [
+    ["Stabilisator Natriumnitrit", "na"],
+    ["Natriumbicarbonat", "na"],
+    ["Mononatriumglutamat", "na"],
+    ["Kaliumchlorid", "pot"],
+    ["Kaliumcitrat", "pot"],
+    ["Glukose-Fruktose-Sirup", "sug"],
+    ["Invertzucker", "sug"],
+    ["Honig", "sug"],
+    ["Emulgator Phosphate", "phos"],
+    ["nitrite de sodium", "na"],
+    ["benzoate de sodium", "na"],
+    ["glutamate monosodique", "na"],
+    ["chlorure de potassium", "pot"],
+    ["citrate de potassium", "pot"],
+    ["sirop de glucose-fructose", "sug"],
+    ["sucre inverti", "sug"],
+    ["miel", "sug"],
+    ["phosphate de calcium", "phos"],
+  ];
+  for (const [text, id] of cases) {
+    it(`${text} -> ${id}`, () => {
+      expect(scanIngredients(text).map((s) => s.id)).toContain(id);
+    });
+  }
+  it("still matches the Dutch spellings it always did", () => {
+    for (const [text, id] of [["natriumnitriet", "na"], ["natriumbicarbonaat", "na"],
+                              ["kaliumchloride", "pot"], ["glucosestroop", "sug"], ["honing", "sug"]]) {
+      expect(scanIngredients(text).map((s) => s.id)).toContain(id);
+    }
   });
 });

@@ -7,7 +7,7 @@ function checkAllFields(result) {
   for (const [key, val] of Object.entries(EXPECTED)) expect(result[key]).toBe(val);
 }
 
-describe("parseNutritionText() - every numeric field, across all five supported languages", () => {
+describe("parseNutritionText(): every numeric field, across all five supported languages", () => {
   it("English label", () => {
     const t = `Nutrition per 100g
 Energy 418 kcal
@@ -106,23 +106,20 @@ Zutaten: Weizenmehl, Palmöl, Salz.`;
   });
 });
 
-describe("parseNutritionText() - fixed: American \"fiber\" spelling", () => {
-  // BUG (found while writing this suite, fixed in exchange.js): the app's
-  // own UI hints point users at USDA FoodData Central as a data source, but
-  // FoodData Central labels say "Fiber", not "Fibre" - and the old regex
-  // only matched the British spelling, so pasting a US label's fibre line
-  // silently came back as null.
+describe("parseNutritionText(): both spellings of fibre", () => {
+  // The app points users at USDA FoodData Central, whose labels say "Fiber".
+  // Matching only the British spelling would return null for every US label.
   it("parses US-spelled \"Fiber\"", () => {
     expect(parseNutritionText("Dietary Fiber 4g").fibre).toBe(4);
     expect(parseNutritionText("Total Fiber: 4.5 g").fibre).toBe(4.5);
   });
-  it("still parses British \"Fibre\"/\"Fibres\" (no regression)", () => {
+  it("parses British \"Fibre\" and \"Fibres\"", () => {
     expect(parseNutritionText("Fibre 4g").fibre).toBe(4);
     expect(parseNutritionText("Fibres 4g").fibre).toBe(4);
   });
 });
 
-describe("parseNutritionText() - basis detection", () => {
+describe("parseNutritionText(): basis detection", () => {
   it("detects 100g", () => {
     expect(parseNutritionText("per 100g: Fat 14g").basis).toBe("100g");
   });
@@ -133,13 +130,18 @@ describe("parseNutritionText() - basis detection", () => {
     expect(parseNutritionText("Per serving (30g): Fat 4g").basis).toBe("serving");
     expect(parseNutritionText("Per portion: Fat 4g").basis).toBe("serving");
     expect(parseNutritionText("Per deel: Vet 4g").basis).toBe("serving"); // Dutch
+    expect(parseNutritionText("Per portie: Vet 4g").basis).toBe("serving"); // Dutch
+    expect(parseNutritionText("Pro Portion: Fett 4g").basis).toBe("serving"); // German
+    expect(parseNutritionText("Je Portion: Fett 4g").basis).toBe("serving"); // German
+    expect(parseNutritionText("Par portion: Lipides 4g").basis).toBe("serving"); // French
+    expect(parseNutritionText("\u03b1\u03bd\u03ac \u03bc\u03b5\u03c1\u03af\u03b4\u03b1: \u039b\u03b9\u03c0\u03b1\u03c1\u03ac 4g").basis).toBe("serving"); // Greek
   });
   it("defaults to 100g when nothing matches", () => {
     expect(parseNutritionText("Fat 14g").basis).toBe("100g");
   });
 });
 
-describe("parseNutritionText() - ingredients extraction", () => {
+describe("parseNutritionText(): ingredients extraction", () => {
   it("stops at the first blank line after the ingredients heading", () => {
     const t = "Ingredients: flour, sugar, salt.\n\nAllergen advice: contains gluten, may contain nuts.";
     expect(parseNutritionText(t).ing).toBe("flour, sugar, salt.");
@@ -181,7 +183,7 @@ describe("firstNum()", () => {
   });
 });
 
-describe("parseNutritionText() - missing/garbage input", () => {
+describe("parseNutritionText(): missing/garbage input", () => {
   it("returns all-null fields for empty input, without throwing", () => {
     const r = parseNutritionText("");
     for (const k of ["cho", "pro", "fat", "fibre", "sugars", "sfa", "salt", "k", "p", "kcal"]) {

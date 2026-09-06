@@ -2,12 +2,8 @@ import { useState } from "react";
 import Tesseract from "tesseract.js";
 import { decompose, gramsPerExchange, inferGroup, parseNutritionText, scanIngredients, r0, r1, num } from "./lib/exchange.js";
 
-/* ------------------------------------------------------------------ *
- * EXCHANGE LOOKUP
- * One canonical per-100 g record, several ways to fill it:
- * pasted label, label photo, by hand, or Open Food Facts.
- * Everything downstream is offline.
- * ------------------------------------------------------------------ */
+// One per-100 g record, filled in by hand, from a pasted label, from a photo,
+// or from Open Food Facts. Everything after that runs offline.
 
 const CSS = `
 .of-root{
@@ -150,6 +146,7 @@ export default function ExchangeLookup() {
   const [unit, setUnit] = useState(15);
   const [portion, setPortion] = useState("100");
   const [subFibre, setSubFibre] = useState(true);
+  const [proTiers, setProTiers] = useState(true);
   const [override, setOverride] = useState("");
   const [ocrLang, setOcrLang] = useState("eng+nld+deu+fra+ell");
 
@@ -157,7 +154,7 @@ export default function ExchangeLookup() {
   const g = (k) => parseFloat(rec[k]) || 0;
   const hasData = rec.cho !== "" || rec.pro !== "" || rec.fat !== "";
 
-  /* ---- parse a pasted label or a photo, entirely on-device: OCR + regex, no network calls ---- */
+  // Read a pasted label or a photo on the device: OCR plus regex, no network call.
   const parseLabel = async (imageData, mediaType) => {
     setBusy(true); setMsg(""); setParsed(false);
     try {
@@ -222,7 +219,7 @@ export default function ExchangeLookup() {
     setMsg("Pulled from Open Food Facts, which is crowd-sourced and unverified. Check the figures against the pack.");
   };
 
-  /* ---- computation ---- */
+  // computation
   const size = parseFloat(portion) || 0;
   let view = null;
   if (hasData && size > 0) {
@@ -231,9 +228,11 @@ export default function ExchangeLookup() {
       sugars: g("sugars") * f, sfa: g("sfa") * f, salt: g("salt") * f,
       k: rec.k === "" ? null : g("k") * f, p: rec.p === "" ? null : g("p") * f,
       kcal: rec.kcal === "" ? g("cho") * 4 * f + g("pro") * 4 * f + g("fat") * 9 * f : g("kcal") * f };
-    const auto = inferGroup({ cho: g("cho"), pro: g("pro"), fat: g("fat"), sugars: g("sugars"), fibre: g("fibre") }, rec.name);
+    const auto = inferGroup({ cho: g("cho"), pro: g("pro"), fat: g("fat"),
+      sugars: rec.sugars === "" ? null : g("sugars"),
+      fibre: rec.fibre === "" ? null : g("fibre") }, rec.name, { portionG: size, unit });
     const gid = override || auto;
-    const dec = decompose(pp, unit, gid, subFibre);
+    const dec = decompose(pp, unit, gid, subFibre, { proteinTiers: proTiers });
     const per100 = { cho: g("cho"), pro: g("pro"), fat: g("fat") };
     dec.rounded = dec.rounded.map((o) => ({ ...o, gpe: gramsPerExchange(o.ref, per100) }));
     const rkcal = dec.rc * 4 + dec.rp * 4 + dec.rf * 9;
@@ -271,7 +270,7 @@ export default function ExchangeLookup() {
               <button className="of-btn" onClick={() => parseLabel(null)} disabled={busy || paste.trim().length < 10}>
                 {busy ? "Reading…" : "Read label"}
               </button>
-              <p className="of-hint">Parsed locally. Values come only from your text, never inferred.</p>
+              <p className="of-hint">Parsed locally, in English, Dutch, German, French and Greek. Values come only from your text, never inferred.</p>
             </>)}
 
             {src === "photo" && (<>
@@ -373,10 +372,18 @@ export default function ExchangeLookup() {
               <input type="checkbox" checked={subFibre} onChange={(e) => setSubFibre(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
               <span>Net off fibre when over 5 g</span>
             </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 12, color: "#5C6167", cursor: "pointer" }}>
+              <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
+              <span>Protein list has fat tiers</span>
+            </label>
+            <p className="of-hint">
+              On for a list with lean, medium-fat and high-fat protein, off for a single protein
+              category. Naming only, the figures are the same either way.
+            </p>
           </div>
         </div>
 
-        {/* -------- sheet -------- */}
+        {/* sheet */}
         <div className="of-sheet">
           <div className="of-shead">
             <h2>Decomposition</h2>
@@ -468,7 +475,7 @@ export default function ExchangeLookup() {
                 <Note key={s.id} kind={s.cls} title={s.title}>
                   <span>{s.hits.map((h) => <span className="of-hit" key={h}>{h}</span>)}</span>
                   {s.id === "phos" && <div style={{ marginTop: 6 }}>
-                    Additive phosphorus is absorbed close to completely, against roughly 40–60% for the phytate-bound
+                    Additive phosphorus is absorbed close to completely, against roughly 40-60% for the phytate-bound
                     phosphorus in plant foods. This product therefore carries more absorbable load than any composition
                     table would show. In CKD, clearing additive sources usually gains more than restricting whole foods.
                   </div>}
@@ -480,13 +487,16 @@ export default function ExchangeLookup() {
             </div>
 
             <div className="of-method">
-              <b>Method.</b> CHO group drawn first at {unit} g per unit, its protein and fat netted off. Residual
-              protein at 7 g per exchange, fat tier by fat per exchange (≤3 g lean, 4-7 g medium, ≥8 g high).
+              <b>Method.</b> CHO group drawn first at {unit} g per unit, its protein and fat netted off. Milk
+              carries the fat on the label, its variant named by fat per exchange (≤3 g fat-free, 4-7 g
+              reduced-fat, ≥8 g whole). Residual protein at 7 g per exchange
+              {proTiers ? ", tier named by fat per exchange (≤3 g lean, 4-7 g medium, ≥8 g high)" : ""},
+              carrying the fat on the label.
               Residual fat at 5 g. The g/ex figures use this food's own composition, not the portion size.<br />
               <b>Provenance.</b> Every figure comes from what you entered or transcribed. Label parsing extracts
               text, it doesn't estimate.<br />
-              <b>Scan limits.</b> Matches text patterns in four languages, reports presence not quantity. Read
-              the hits, don't just count them.
+              <b>Scan limits.</b> Matches E-numbers, and additive names in English, Dutch, German, French
+              and Greek. Anything worded outside those lists is not detected.
             </div>
           </>)}
         </div>

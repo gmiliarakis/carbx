@@ -1,25 +1,21 @@
-/* ------------------------------------------------------------------ *
- * EXCHANGE LOOKUP — pure logic
- * Everything in this file is a plain function of its inputs: no DOM, no
- * React, no network. Extracted out of App.jsx so it can be unit tested
- * directly. Behaviour is unchanged from the inline originals.
- * ------------------------------------------------------------------ */
+import { KEYWORDS } from "./keywords.js";
 
-/* ---------------- exchange reference system ----------------
- * A diabetes exchange list groups foods by how much carbohydrate, protein
- * and fat one "exchange" of a group carries. groups() returns the US
- * reference values, scaled to whatever CHO-per-unit convention the user
- * picked (15 g US, 12 g Belgian, 10 g Kenyan/Dutch). TIERS covers the
- * protein side: how much fat rides along with 7 g of protein decides
- * whether a food counts as lean, medium or high-fat protein.
- * ---------------------------------------------------------- */
+// Exchange logic. No DOM, no React, no network: every function here is a
+// plain function of its arguments.
+
+// An exchange list groups foods by how much carbohydrate, protein and fat one
+// exchange of a group carries. The convention in use (15 g US, 12 g Belgian,
+// 10 g Kenyan and Dutch) redefines the carbohydrate unit and nothing else, so
+// only the cho column scales. A milk exchange carries 8 g of protein in every
+// system. TIERS covers the protein side: the fat that comes with 7 g of protein
+// decides lean, medium or high fat.
 export function groups(unit) {
   const k = unit / 15;
   return {
-    starch: { id: "starch", label: "Starch", cho: 15 * k, pro: 3 * k, fat: 1 * k },
+    starch: { id: "starch", label: "Starch", cho: 15 * k, pro: 3, fat: 1 },
     fruit:  { id: "fruit",  label: "Fruit",  cho: 15 * k, pro: 0, fat: 0 },
-    milk:   { id: "milk",   label: "Milk",   cho: 12 * k, pro: 8 * k, fat: 0 },
-    veg:    { id: "veg",    label: "Non-starchy veg", cho: 5 * k, pro: 2 * k, fat: 0 },
+    milk:   { id: "milk",   label: "Milk",   cho: 12 * k, pro: 8, fat: 0 },
+    veg:    { id: "veg",    label: "Non-starchy veg", cho: 5 * k, pro: 2, fat: 0 },
     sweet:  { id: "sweet",  label: "Sweets / other CHO", cho: 15 * k, pro: 0, fat: 0 },
   };
 }
@@ -29,27 +25,44 @@ export const TIERS = [
   { label: "High-fat protein", fat: 8, max: 1e9 },
 ];
 
-/*
- * Flags four additive classes worth knowing for renal and cardiovascular
- * diets: phosphate and potassium additives (both absorbed far more
- * completely than the same minerals occurring naturally in whole foods),
- * sodium-bearing preservatives, and common added-sugar sources. Each
- * entry matches either an E-number or the additive's name, in English,
- * Dutch and Greek.
- */
+// The milk list has three fat variants sharing 12 g of carbohydrate and 8 g of
+// protein, separated by the fat one exchange carries: 0 to 3 g inclusive is
+// fat-free, 4 to 7 is reduced-fat, 8 or more is whole. `fat` here is the list's
+// nominal figure for the variant, used for reference only. The exchange itself
+// is charged the fat actually on the label, so a fat-free yoghurt declaring
+// 1.6 g is a fat-free milk exchange carrying 1.6 g, not 0.
+export const MILK_TIERS = [
+  { label: "Fat-free milk", fat: 0, max: 3 },
+  { label: "Reduced-fat milk", fat: 5, max: 7 },
+  { label: "Whole milk", fat: 8, max: 1e9 },
+];
+
+// The protein and fat exchanges, kept here with the rest of the reference
+// values so no rule writes a group's macro grams out by hand. Neither carries
+// carbohydrate, so the carbohydrate convention does not scale them: only the
+// fat on a protein exchange varies, and TIERS decides that.
+export const PROTEIN_EXCHANGE = { cho: 0, pro: 7, fat: 0 };
+export const FAT_EXCHANGE = { cho: 0, pro: 0, fat: 5 };
+
+// Additive classes worth flagging on a renal or cardiovascular diet.
+// Phosphate and potassium additives are absorbed far more completely than
+// the same minerals occurring naturally in food. Each entry matches an
+// E-number, which carries no language, or the additive name in the same five
+// languages the label parser reads. German and Dutch mostly differ by a
+// trailing vowel, so one stem plus \w* usually covers both.
 export const SCANS = [
   { id: "phos", cls: "a", title: "Phosphate additives",
     e: /\b[eE]\s?-?(338|339|340|341|343|442|450|451|452|1410|1412|1413|1414|1442)\b/g,
     words: /(phosph\w*|fosfa\w*|fosfor\w*|φωσφορ\w*)/gi },
   { id: "pot", cls: "w", title: "Potassium additives",
     e: /\b[eE]\s?-?(340|501|508|515|525|536)\b/g,
-    words: /(potassium\s+(chloride|lactate|citrate|carbonate)|kaliumchloride|kaliumlactaat|χλωριούχο\s+κάλιο|salt\s+substitute|zoutvervanger)/gi },
+    words: /(potassium\s+(chloride|lactate|citrate|carbonate)|kalium(chlorid|lactaat|lactat|citrat|carbonat)\w*|(chlorure|lactate|citrate|carbonate)\s+de\s+potassium|χλωριούχο\s+κάλιο|salt\s+substitute|zoutvervanger|kaliumzout)/gi },
   { id: "sug", cls: "w", title: "Added sugar sources",
     e: null,
-    words: /(glucose[-\s]?fructose\s?syrup|fructose[-\s]?glucose\s?syrup|glucose\s?syrup|corn\s?syrup|maltodextrin\w*|dextrose|invert\s?sugar|glucosestroop|fructose-?glucosestroop|maltodextrine|invertsuiker|σιρόπι\s+γλυκόζης|μαλτοδεξτρίνη|honey|honing|μέλι|concentrated\s+fruit\s+juice|molasses)/gi },
+    words: /(glucose[-\s]?fructose\s?syrup|fructose[-\s]?glucose\s?syrup|glucose\s?syrup|corn\s?syrup|maltodextrin\w*|dextrose|invert\s?sugar|glucosestroop|fructose-?glucosestroop|invertsuiker|glu[ck]ose[-\s]?fru[ck]tose[-\s]?sirup|glu[ck]osesirup|invertzucker|sirop\s+de\s+glucose([-\s]?fructose)?|sucre\s+inverti|σιρόπι\s+γλυκόζης|μαλτοδεξτρίνη|honey|honing|honig|\bmiel\b|μέλι|concentrated\s+fruit\s+juice|molasses)/gi },
   { id: "na", cls: "w", title: "Sodium-bearing additives",
     e: /\b[eE]\s?-?(250|251|252|262|281|500|621|627|631)\b/g,
-    words: /(monosodium\s+glutamate|sodium\s+(nitrite|nitrate|benzoate|bicarbonate)|natriumnitriet|natriumbicarbonaat)/gi },
+    words: /(monosodium\s+glutamate|mononatriumglutamat\w*|glutamate\s+monosodique|sodium\s+(nitrite|nitrate|benzoate|bicarbonate)|natrium(nitriet|nitrit|nitraat|nitrat|benzoaat|benzoat|bicarbonaat|bicarbonat|hydrogencarbonat)\w*|(nitrite|nitrate|benzoate|bicarbonate)\s+de\s+sodium|(νιτρώδες|νιτρικό|βενζοϊκό|γλουταμινικό|ανθρακικό|διττανθρακικό)\s+νάτριο)/gi },
 ];
 export function scanIngredients(text) {
   if (!text || text.trim().length < 3) return [];
@@ -61,14 +74,9 @@ export function scanIngredients(text) {
   }).filter((s) => s.hits.length);
 }
 
-/*
- * Reads a nutrition label, pasted text or OCR output from a photo, with
- * plain regex instead of a model: find a keyword in one of five
- * languages, take the nearest following number. Naive by design, no
- * network call, nothing leaves the device, but it only recognises
- * common label wording and can miss unusual layouts or a product name.
- * Treat the result as a starting point, check it against the pack.
- */
+// Offline label reader for pasted text and OCR output: find a keyword in
+// one of five languages, take the nearest number after it. It only knows
+// common label wording, so the values it fills in need checking.
 export function firstNum(re, text) {
   const m = text.match(re);
   if (!m) return null;
@@ -78,7 +86,7 @@ export function parseNutritionText(text) {
   const t = (text || "").replace(/\r/g, " ").replace(/\u00a0/g, " ");
   const basis = /100\s*m\s?l/i.test(t) ? "100ml"
     : /100\s*g/i.test(t) ? "100g"
-    : /per\s*(portion|serving|part|deel)/i.test(t) ? "serving"
+    : /(\bper|\bpro|\bpar|\bje|ανά)\s*(portion|portie|serving|part|deel|μερίδ)/i.test(t) ? "serving"
     : "100g";
 
   const kcal   = firstNum(/(\d+(?:[.,]\d+)?)\s*kcal/i, t);
@@ -92,7 +100,7 @@ export function parseNutritionText(text) {
   const k      = firstNum(/(?:kalium|potassium|κάλιο)\D{0,15}?(\d+(?:[.,]\d+)?)\s*mg/i, t);
   const p      = firstNum(/(?:fosfor|phosphorus|phosphore|phosphor|φώσφορος)\D{0,15}?(\d+(?:[.,]\d+)?)\s*mg/i, t);
 
-  const ingMatch = t.match(/(?:ingredi[eë]nten|ingredients?|ingr[ée]dients?|zutaten|συστατικά)\s*[:\-]?\s*([\s\S]+)/i);
+  const ingMatch = t.match(/(?:ingredi[eë]nten|ingredients?|ingr[ée]dients?|zutaten|συστατικά)\s*[:-]?\s*([\s\S]+)/i);
   const ing = ingMatch ? ingMatch[1].split(/\n\s*\n/)[0].replace(/\s+/g, " ").trim().slice(0, 800) : "";
 
   return { cho, pro, fat, fibre, sugars, sfa, salt, k, p, kcal, ing, basis };
@@ -103,90 +111,183 @@ export const r0 = (x) => Math.round(x);
 export const half = (x) => Math.round(x * 2) / 2;
 export const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-// Common fruit names, English/Dutch/German/French/Greek - the same five
-// languages the rest of this file supports. Necessarily incomplete (no fixed
-// list covers "any language"), which is why isFruitLike() below exists as a
-// language-agnostic backstop for names this list doesn't recognise.
-const FRUIT_WORDS = [
-  "fruit", "vrucht", "frucht", "φρού",
-  "apple", "appel", "apfel", "pomme", "μήλ",
-  "banana", "banaan", "banane", "μπανάν",
-  "orange", "sinaasappel", "apfelsine", "πορτοκάλ",
-  "mandarin", "tangerine", "clementine", "μανταρίν",
-  "grape", "druif", "druiven", "traube", "raisin sec", "σταφύλ",
-  "raisin", "rozijn", "rosine", "σταφίδ",
-  "pear", "peer", "birne", "poire", "αχλάδ",
-  "melon", "meloen", "melone", "πεπόν",
-  "watermelon", "watermeloen", "wassermelone", "pastèque", "καρπούζ",
-  "strawberry", "aardbei", "erdbeere", "fraise", "φράουλ",
-  "raspberry", "framboos", "himbeere", "framboise", "βατόμουρ",
-  "blueberry", "bosbes", "heidelbeere", "myrtille", "μύρτιλ",
-  "blackberry", "braam", "brombeere", "mûre", "βατόμουρ",
-  "cherry", "kers", "kirsche", "cerise", "κεράσ",
-  "peach", "perzik", "pfirsich", "pêche", "ροδάκιν",
-  "nectarine", "νεκταρίν",
-  "plum", "pruim", "pflaume", "prune", "δαμάσκην",
-  "apricot", "abrikoos", "aprikose", "abricot", "βερίκοκ",
-  "date", "dadel", "dattel", "χουρμάδ",
-  "fig", "vijg", "feige", "figue", "σύκ",
-  "pomegranate", "granaatappel", "granatapfel", "grenade", "ρόδ",
-  "kiwi", "ακτινίδ",
-  "pineapple", "ananas", "ανανά",
-  "mango", "μάνγκο",
-  "papaya", "παπάγια",
-  "guava",
-  "lemon", "citroen", "zitrone", "citron", "λεμόν",
-  "lime", "limoen", "limette",
-  "grapefruit", "pompelmoes", "pamplemousse", "γκρέιπφρουτ",
-  "persimmon",
-  "juice", "sap", "saft", "χυμ",
-];
+// Name matching for inferGroup(). Each group's keywords live in keywords.js;
+// this turns them into a "how well does this name match" score, which is the
+// length of the longest keyword found in the name, or 0 for no match.
+//
+// Length is what resolves a name that matches two groups, and it resolves them
+// the way a person would: the more specific word wins. "aardappel" beats
+// "appel", "green bean" beats "bean", "cornichon" beats "corn", "buttermilk"
+// beats "butter", "pepperoni" beats "pepper". Without it every one of those
+// lands in the wrong group.
+// Greek moves its accent when a word inflects or joins a compound: μελιτζάνα
+// becomes μελιτζανοσαλάτα, ντομάτα is also written τομάτα. Folding the accents
+// off both sides means a stem written either way still matches, and it folds
+// the final sigma too. Latin letters are left alone, because German needs its
+// umlauts kept apart: "Öl" is not "ol".
+const GREEK_FOLD = { "ά": "α", "έ": "ε", "ή": "η", "ί": "ι", "ό": "ο", "ύ": "υ",
+  "ώ": "ω", "ϊ": "ι", "ϋ": "υ", "ΐ": "ι", "ΰ": "υ", "ς": "σ" };
+const fold = (s) => s.replace(/[άέήίόύώϊϋΐΰς]/g, (c) => GREEK_FOLD[c]);
 
-export function inferGroup(p, name = "") {
+function keywordScore(group, name) {
+  const t = fold(name);
+  const k = KEYWORDS[group];
+  let best = 0;
+  for (const term of k.any || []) {
+    if (term.length > best && t.includes(fold(term))) best = term.length;
+  }
+  // A stem too short to be safe as a substring, anchored to a word start.
+  // The entry is a regex fragment, so it can carry an exclusion of its own.
+  for (const term of k.start || []) {
+    if (new RegExp(`(^|[^\\p{L}\\p{N}])${term}`, "u").test(t)) {
+      best = Math.max(best, term.replace(/\(\?![^)]*\)/g, "").length);
+    }
+  }
+  // German compounds suffix the noun, so "öl" has to sit at a word end to
+  // catch "Olivenöl" without also matching "Röllchen".
+  for (const term of k.end || []) {
+    if (new RegExp(`${term}(?![\\p{L}\\p{N}])`, "u").test(t)) {
+      best = Math.max(best, term.length);
+    }
+  }
+  return best;
+}
+
+// p is per 100 g. opts.portionG is the portion actually being eaten and
+// opts.unit the carbohydrate convention, both used only by the dairy rule: a
+// dairy-named food carrying a full milk exchange of protein in the portion is a
+// milk portion however dilute it is per 100 g. The threshold is read from the
+// group table rather than written out, so it cannot drift from it. The defaults
+// make the rule read per 100 g at the 15 g convention.
+export function inferGroup(p, name = "", opts = {}) {
+  const { portionG = 100, unit = 15 } = opts;
   const t = name.toLowerCase();
-  const has = (...k) => k.some((x) => t.includes(x));
-  // "ei" (Dutch for egg) and "vis" (Dutch for fish) are only 2-3 letters, so a
-  // plain substring test matches them inside unrelated words too - notably
-  // "ei" inside "protein", which is common in modern packaged-food names.
-  // Require these two to at least start a word (not preceded by a letter or
-  // digit) so "high protein bar" doesn't get treated as containing egg, while
-  // "gekookt ei" / "eiersalade" / "visfilet" still match as intended.
-  const hasWordStart = (...tokens) => tokens.some((tok) => new RegExp(`(^|[^\\p{L}\\p{N}])${tok}`, "iu").test(t));
   const kcal = p.cho * 4 + p.pro * 4 + p.fat * 9 || 1;
-  if (has("oil", "olie", "butter", "boter", "margarine", "λάδι", "βούτυρο") && p.cho < 5 && p.pro < 5) return "fat-only";
-  if (has("milk", "melk", "yog", "kefir", "γάλα", "γιαούρτι") && p.cho > 2 && p.pro > 2) return "milk";
-  if (has("cheese", "kaas", "τυρί", "meat", "vlees", "fish", "ham", "egg", "tofu", "nut", "noot") || hasWordStart("ei", "vis")) return p.cho < 5 ? "protein-only" : "starch";
-  if (has(...FRUIT_WORDS)) return "fruit";
-  // Language-agnostic backstop: a food not named in FRUIT_WORDS (any other
-  // language, an unusual product name) that still has fresh fruit's macro
-  // signature - mostly-sugar carbohydrate, some fibre, next to no protein or
-  // fat, in a plausible per-100g range - gets classified as fruit by its
-  // composition instead of falling through to starch/veg. The fibre floor
-  // is what keeps a zero-fibre sugary drink or straight honey/syrup from
-  // being caught here too; dried fruit (much more concentrated CHO) isn't
-  // covered by this and relies on FRUIT_WORDS instead.
+  const fatPct = (p.fat * 9) / kcal, proPct = (p.pro * 4) / kcal;
+  // Derived once, because the name branches need them too: a word in a name is
+  // only worth acting on when the composition agrees with it.
+  const G = groups(15);
   const sugars = num(p.sugars) ?? 0, fibre = num(p.fibre) ?? 0;
-  const sugarRatio = p.cho > 0 ? sugars / p.cho : 0;
-  if (p.cho >= 2 && p.cho <= 35 && p.pro < 3 && p.fat < 3 && fibre >= 0.3 && sugarRatio >= 0.45) return "fruit";
-  const fatPct = (p.fat * 9) / kcal, choPct = (p.cho * 4) / kcal, proPct = (p.pro * 4) / kcal;
+  const proPerCho = p.cho > 0 ? p.pro / p.cho : Infinity;
+  const sugarFrac = p.cho > 0 ? sugars / p.cho : 0;
+  // A field left blank is unknown, not zero. Missing data must never be read as
+  // evidence against a food, only stated data can rule something out.
+  const fibreStated = num(p.fibre) != null;
+  const score = (g) => keywordScore(g, t);
+
+  // Fat first, and it wins outright over a longer name from another group,
+  // because a fat name plus fat-dominant macros is not ambiguous: "cream
+  // cheese" is a fat exchange even though "cheese" is protein. Nuts, seeds and
+  // nut butters live in this list, following the US and EDE lists, so the gate
+  // is that fat dominates the energy rather than that protein is absent. It is
+  // what keeps "olive bread" and "peanut butter cookies" out.
+  if (score("fat") > 0 && (fatPct >= 0.6 || (p.cho < 5 && p.pro < 5))) return "fat-only";
+
+  const portionPro = p.pro * (portionG / 100);
+  // A dairy word is only dairy when the food carries protein against its
+  // carbohydrate and is not mostly fat. Sweetening a yoghurt dilutes the ratio,
+  // so the floor is low, but milk chocolate sits below it and is 30 g of fat
+  // besides, and "milk roll" and "milk chocolate" are both rejected. Dairy also
+  // wins outright, so "chocolate milk" is milk while "milk chocolate", failing
+  // the gate, falls through to the sweets in the starch list.
+  // Fat alone cannot rule dairy out: strained yoghurt and whole milk powder
+  // both carry more than 12 g. What separates them from milk chocolate is that
+  // their protein still stands in a milk-like ratio to their carbohydrate.
+  const milkRatio = G.milk.pro / G.milk.cho;
+  const dairyLike = proPerCho >= milkRatio * 0.3
+    && (p.fat < 12 || proPerCho >= milkRatio * 0.75);
+  if (score("milk") > 0 && dairyLike
+      && ((p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro)) return "milk";
+
+  // A fruit word is often a flavour rather than the food: apple pie, banana
+  // bread, strawberry yoghurt, lemonade, cherry cola, fruit squash. The name is
+  // still good evidence, so it is only overruled when the composition
+  // positively contradicts it. Fat or protein a fruit would not carry does
+  // that. So does a declared absence of fibre, which whole fruit always has,
+  // unless the food is a juice, the one fruit that has none.
+  const isJuice = /juice|saft|jus de|χυμ|(^|[^\p{L}])sap/u.test(fold(t));
+  const contradictsFruit = p.fat >= 3
+    || proPerCho >= (G.starch.pro / G.starch.cho) * 0.5
+    || (fibreStated && fibre < 0.3 && !isJuice);
+
+  // The remaining four groups are settled together, by the longest keyword,
+  // so the most specific name wins wherever two lists overlap. Each still has
+  // to satisfy its own composition gate; a group whose gate fails drops out
+  // and the next-longest match is considered instead.
+  const gates = {
+    // A protein-named food is a protein until it carries a starch exchange's
+    // worth of carbohydrate, which is what a breadcrumb coating or a cracker
+    // does. Feta at 6.7 g and a soft cheese at 5.3 g are still protein.
+    protein: () => (p.cho < 12 ? "protein-only" : "starch"),
+    fruit: () => (contradictsFruit ? null : "fruit"),
+    // A vegetable exchange is 5 g of carbohydrate, so a vegetable name on a
+    // food carrying more than about two of them is a dish, not a vegetable.
+    // Fat is deliberately not part of the gate: roasted vegetables are still
+    // vegetables, and decompose turns the oil into fat exchanges by itself.
+    veg: () => (p.cho <= 12 ? "veg" : null),
+    // Starch covers the sweets too, so the gate is only that the food actually
+    // carries carbohydrate: a "cauliflower rice" does not.
+    starch: () => (p.cho >= 8 ? "starch" : null),
+  };
+  const ranked = Object.keys(gates)
+    .map((g) => [g, score(g)])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  for (const [g] of ranked) {
+    const decided = gates[g]();
+    if (decided) return decided;
+  }
+  // Composition check for fruit the name list misses: mostly-sugar
+  // carbohydrate, some fibre, almost no protein or fat, in a plausible
+  // per-100 g range. The fibre floor keeps sugary drinks and honey out.
+  // Dried fruit is too concentrated to fit here and relies on the name list.
+  // Composition fallback, for a food whose name says nothing useful. The
+  // carbohydrate groups are told apart the way their definitions differ: by how
+  // much protein rides with the carbohydrate, and by how much carbohydrate there
+  // is at all. The ratios are read off the group table, not written out here.
+  // Barely any fat-free carbohydrate: a fat, not a carbohydrate food.
   if (fatPct > 0.7 && p.cho < 5 && p.pro < 5) return "fat-only";
+
+  // Milk is checked before the protein rules. Dairy carries a lot of protein
+  // against little carbohydrate, so a plain yoghurt would otherwise read as a
+  // pure protein, when its carbohydrate is lactose and belongs on the milk
+  // list. 12 g of carbohydrate against 8 g of protein, all of it sugar, no
+  // fibre. The protein ratio is what keeps a watery vegetable out.
+  if (p.cho >= 2 && p.cho <= 15 && fibre < 1 && sugarFrac >= 0.7
+      && proPerCho >= (G.milk.pro / G.milk.cho) * 0.75) return "milk";
+
+  // Otherwise, barely any carbohydrate means a protein.
   if (proPct > 0.4 && p.cho < 5) return "protein-only";
-  if (choPct > 0.45) return p.cho > 12 ? "starch" : "veg";
   if (p.cho < 2 && p.pro > 5) return "protein-only";
+
+  // Nonstarchy vegetable: 5 g of carbohydrate against 2 g of protein, so little
+  // carbohydrate with protein alongside it. That protein is what separates a
+  // vegetable from a sugary drink carrying the same carbohydrate.
+  if (p.cho <= 8 && p.fat < 3 && proPerCho >= (G.veg.pro / G.veg.cho) * 0.4) return "veg";
+
+  // Fruit: 15 g of carbohydrate and no protein, mostly sugar, with some fibre.
+  // Carrying next to no protein is what separates it from starch and milk, and
+  // the fibre floor keeps sugar-water out.
+  if (p.cho >= 8 && p.cho <= 35 && p.fat < 3 && fibre >= 0.3 && sugarFrac >= 0.45
+      && proPerCho < (G.starch.pro / G.starch.cho) * 0.5) return "fruit";
+
   return "starch";
 }
 
-/*
- * Walks a food's macros down to whole exchanges, one group at a time:
- * carbohydrate first, against the auto-detected or user-picked group,
- * then whatever protein is left over (7 g per exchange, fat tier set by
- * how much fat comes with it), then whatever fat remains after that
- * (5 g per exchange). Each stage only touches the residual left by the
- * stage before it, which is why order matters and why real foods rarely
- * divide evenly into exchange units. Fractional exchanges round to the
- * nearest half.
- */
-export function decompose(p, unit, groupId, subFibre) {
+// Draws a food's macros down to whole exchanges, one group at a time:
+// carbohydrate first against the chosen group, then the protein left over
+// (7 g per exchange, fat tier set by the fat that comes with it), then the
+// fat still left (5 g per exchange). Each stage works on the residual from
+// the stage before, so order matters. Fractions round to the nearest half.
+// opts.proteinTiers says which protein list the person was given, and so only
+// affects what an exchange is called: the tiered meat list names it lean,
+// medium-fat or high-fat, a single protein category just calls it protein.
+// Either way the exchange carries the fat the label declares. A tier is a range,
+// and the tier is picked because the food's fat falls inside it, so a food with
+// 3 g of fat per exchange is lean carrying 3 g. Nothing spills into a separate
+// fat exchange on account of a nominal figure.
+export function decompose(p, unit, groupId, subFibre, opts = {}) {
+  const { proteinTiers = true } = opts;
   const G = groups(unit);
   const steps = [], out = [];
   const choAvail = subFibre && p.fibre > 5 ? Math.max(0, p.cho - p.fibre) : p.cho;
@@ -195,26 +296,41 @@ export function decompose(p, unit, groupId, subFibre) {
     ? `Portion, fibre ${r1(p.fibre)} g netted off` : "Portion as eaten", cho, pro, fat });
 
   if (G[groupId] && cho > 0.4) {
-    const g = G[groupId], ex = cho / g.cho;
+    let g = G[groupId];
+    const ex = cho / g.cho;
+    // Milk carries a fat variant, picked by the fat that comes with one exchange
+    // of it. The variant names the food; it does not restate its fat. The
+    // exchange is charged fatPer, the label's own figure, so nothing measured is
+    // replaced by the list's nominal value.
+    if (g.id === "milk") {
+      const fatPer = fat / ex;
+      const tier = MILK_TIERS.find((t) => fatPer <= t.max) || MILK_TIERS[2];
+      g = { ...g, label: tier.label, fat: fatPer };
+    }
     const dP = Math.min(pro, ex * g.pro), dF = Math.min(fat, ex * g.fat);
     cho -= ex * g.cho; pro -= dP; fat -= dF;
     out.push({ label: g.label, ex, ref: g });
     steps.push({ kind: "draw", label: `${r1(ex)} × ${g.label}`, cho: -(ex * g.cho), pro: -dP, fat: -dF });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
-  if (pro > 1.2) {
-    const ex = pro / 7, fatPer = fat / ex;
+  // A food on the fat list counts as fat exchanges and nothing else. That is
+  // what makes nuts work: 30 g of almonds is fat, and the protein riding
+  // along with it is not a separate exchange in either the US or the EDE list.
+  if (pro > 1.2 && groupId !== "fat-only") {
+    const ex = pro / PROTEIN_EXCHANGE.pro, fatPer = fat / ex;
     const tier = TIERS.find((t) => fatPer <= t.max) || TIERS[2];
-    const dF = Math.min(fat, ex * tier.fat);
-    pro -= ex * 7; fat -= dF;
-    out.push({ label: tier.label, ex, ref: { cho: 0, pro: 7, fat: tier.fat } });
-    steps.push({ kind: "draw", label: `${r1(ex)} × ${tier.label}`, cho: 0, pro: -(ex * 7), fat: -dF });
+    const label = proteinTiers ? tier.label : "Protein";
+    const refFat = fatPer;
+    const dF = Math.min(fat, ex * refFat);
+    pro -= ex * PROTEIN_EXCHANGE.pro; fat -= dF;
+    out.push({ label, ex, ref: { ...PROTEIN_EXCHANGE, fat: refFat } });
+    steps.push({ kind: "draw", label: `${r1(ex)} × ${label}`, cho: 0, pro: -(ex * PROTEIN_EXCHANGE.pro), fat: -dF });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
   if (fat > 1.2) {
-    const ex = fat / 5; fat -= ex * 5;
-    out.push({ label: "Fat", ex, ref: { cho: 0, pro: 0, fat: 5 } });
-    steps.push({ kind: "draw", label: `${r1(ex)} × Fat`, cho: 0, pro: 0, fat: -(ex * 5) });
+    const ex = fat / FAT_EXCHANGE.fat; fat -= ex * FAT_EXCHANGE.fat;
+    out.push({ label: "Fat", ex, ref: FAT_EXCHANGE });
+    steps.push({ kind: "draw", label: `${r1(ex)} × Fat`, cho: 0, pro: 0, fat: -(ex * FAT_EXCHANGE.fat) });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
   const rounded = out.map((o) => ({ ...o, ex: half(o.ex) })).filter((o) => o.ex > 0);
@@ -223,10 +339,9 @@ export function decompose(p, unit, groupId, subFibre) {
   return { steps, rounded, rc, rp, rf };
 }
 
-// Converts one exchange back into grams of this specific food. Unlike
-// the exchange counts above, this ignores portion size, it is a fixed
-// property of the food's own composition (e.g. "1 starch exchange of
-// this cracker = 47 g"), so it stays correct even if the portion changes.
+// Converts one exchange back into grams of this food. It ignores portion
+// size: "1 starch exchange of this cracker = 47 g" is a property of the
+// food's composition and stays true whatever portion was entered.
 export function gramsPerExchange(ref, per100) {
   if (ref.cho > 0) return per100.cho > 0 ? (100 * ref.cho) / per100.cho : null;
   if (ref.pro > 0) return per100.pro > 0 ? (100 * ref.pro) / per100.pro : null;
