@@ -27,6 +27,23 @@ describe("the two languages stay in step", () => {
     }
   });
 
+  it("keeps the flag sentences distinct within a language", () => {
+    // Each flag has its own severity: "Salty" warns at 250 mg of sodium and
+    // "High in salt" alerts at 500. If two of them read identically, the only
+    // thing separating a warning from an alert on screen is its colour. This
+    // catches the copy-paste that overwrites one flag with another.
+    const clashes = [];
+    for (const id of LANG_IDS) {
+      const flags = Object.entries(STRINGS[id]).filter(([k]) => k.startsWith("flag"));
+      const byText = new Map();
+      for (const [k, v] of flags) {
+        if (byText.has(v)) clashes.push(`${id}: ${byText.get(v)} and ${k} read the same`);
+        byText.set(v, k);
+      }
+    }
+    expect(clashes).toEqual([]);
+  });
+
   it("keeps the same placeholders in both languages", () => {
     const holders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
     const wrong = [];
