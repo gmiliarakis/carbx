@@ -48,6 +48,22 @@ Macronutrients (carbohydrate, protein and fat) are the only required fields. Pas
 
 Each result says which group it was counted as and whether the name or the figures decided it. The assigned group can always be overridden. The ledger shows the unrounded working, and the drift figure shows how much energy the rounding cost.
 
+## Terminology
+
+**Food group** is the list a food is counted from: starch, fruit, milk,
+non-starchy vegetables, sweets and other carbohydrates, protein, fat.
+**Exchange** is the countable unit drawn from it: "1.5 milk exchanges, 300 g
+each".
+
+Two synonyms are worth knowing, because the sources use them. The 2007 list
+counts in "1 carbohydrate, 1 fat" in its tables but says *choice* in its prose
+("1 fruit choice is equivalent to", "1 milk choice contains", "add an extra fat
+choice"), and later editions dropped "exchange" from the title altogether.
+Greek clinical practice says *ισοδύναμα*, literally "equivalents" rather than
+"exchanges": English named the unit after swapping foods between lists, Greek
+after their equal value. A Greek interface should use ισοδύναμα and never a
+calque such as *ανταλλαγές*.
+
 ## Reference
 
 The table is the US reference, scaled by `unit / 15` to serve all three conventions.
@@ -284,6 +300,23 @@ of a nutriment (in g, or kJ for energy) for 100 g or 100 ml of product"
 ([data-fields.txt](https://world.openfoodfacts.org/data/data-fields.txt)).
 Potassium and phosphorus are converted to milligrams on import; salt is already
 in grams. The database is crowd-sourced and unverified.
+
+## Typography
+
+Source Sans 3 and Source Code Pro, both SIL Open Font License, self-hosted in
+`public/fonts`. Self-hosted rather than loaded from a font CDN for two reasons:
+the page renders identically on every device instead of falling back to whatever
+the visitor's operating system supplies, and no visitor's IP address reaches a
+third party, which a tool advertising no analytics has to mean literally.
+
+Latin, Latin Extended and Greek are shipped; Cyrillic and Vietnamese are not,
+since the label parser reads English, Dutch, German, French and Greek. The faces
+are split by `unicode-range`, so a browser fetches the Greek file only when Greek
+is actually on the page: 188 KB on disk, around 40 KB on a typical first load.
+
+`npm run fonts` copies the WOFF2 files out of the fontsource packages and
+regenerates `src/fonts.css` from those packages' own `unicode-range`
+declarations, so the ranges cannot drift from the files they describe.
 
 ## Development
 

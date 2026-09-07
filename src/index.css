@@ -1,5 +1,15 @@
+/* The typefaces live here as well as in App.jsx, because the document paints
+   before the app mounts and anything that inherits from body must not flash a
+   system font first. The stacks are declared once and the app reads them
+   through --sans and --mono. */
 :root {
-  color-scheme: light dark;
+  --sans: "Source Sans 3 Variable", system-ui, sans-serif;
+  --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* The interface is a single light design. Without this, a visitor whose
+     system is in dark mode gets dark form controls painted inside light
+     fields. */
+  color-scheme: light;
 }
 
 * {
@@ -15,5 +25,5 @@ html, body, #root {
 
 body {
   background: #FBFBF9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--sans);
 }
