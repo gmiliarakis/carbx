@@ -118,6 +118,11 @@ describe("keywords.js: words that swallow other words", () => {
       for (const ts of anyTerms(short)) {
         for (const g of GROUPS) {
           if (g === short) continue;
+          // plantDairy is exempt because inferGroup resolves it BEFORE the fat
+          // and dairy rules, so a fat or dairy term sitting inside one of its
+          // names can never win. "almond" inside "almond milk" is the case that
+          // forced that ordering. inferGroupReason.test.js pins it.
+          if (g === "plantDairy") continue;
           for (const tl of anyTerms(g)) {
             if (tl.length > ts.length && tl.includes(ts) && !REVIEWED_OVERLAPS.has(`${ts}<${tl}`)) {
               found.push(`${ts} (${short}) sits inside ${tl} (${g})`);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Tesseract from "tesseract.js";
+import { LANGS, translator } from "./i18n.js";
 import { decompose, fromOpenFoodFacts, gramsPerExchange, inferGroupWithReason,
   parseNutritionText, scanIngredients, r0, r1 } from "./lib/exchange.js";
 
@@ -25,8 +26,14 @@ const CSS = `
   -webkit-font-smoothing:antialiased;
 }
 .of-root *{box-sizing:border-box}
-.of-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+.of-head{display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
   padding:18px 22px 14px; background:var(--bar); color:var(--sheet)}
+.of-langs{display:flex; gap:10px; align-items:baseline}
+.of-langs button{background:none; border:0; padding:0; cursor:pointer;
+  font-family:var(--sans); font-size:13px; color:#9AA0A6}
+.of-langs button:hover{color:var(--sheet)}
+.of-langs button[data-on="1"]{color:var(--sheet); text-decoration:underline; text-underline-offset:3px}
+.of-langs button:focus-visible{outline:2px solid var(--sheet); outline-offset:3px}
 .of-title{font-family:var(--display); font-size:15px; letter-spacing:.06em; font-weight:600}
 .of-grid{display:grid; grid-template-columns:340px 1fr; align-items:stretch; flex:1 1 auto}
 @media (max-width:880px){ .of-grid{grid-template-columns:1fr} }
@@ -115,7 +122,6 @@ const CSS = `
   background:var(--signal-w); border-bottom:1px solid var(--line);
   font-size:13.5px; line-height:1.55; color:#2B2F33}
 .of-use p{margin:0; max-width:92ch}
-.of-use b{font-weight:600}
 .of-use button{flex:0 0 auto; background:none; border:1px solid var(--line);
   border-radius:2px; color:var(--muted); cursor:pointer; padding:6px 12px;
   font-family:var(--sans); font-size:12px; letter-spacing:.005em}
@@ -175,28 +181,46 @@ function Line({ flag = "", name, sub, value, unit }) {
     <span className="of-vl" style={{ color: c }}>{value}{unit && <u>{unit}</u>}</span></div>);
 }
 
-function plainFlags({ pp, na, scans }) {
+function plainFlags({ pp, na, scans }, renal, t) {
   const out = [];
-  if (na > 500) out.push({ id: "na", cls: "a", text: `High in salt, ${r0(na)} mg sodium in this portion.` });
-  else if (na > 250) out.push({ id: "na", cls: "w", text: `Salty, ${r0(na)} mg sodium in this portion.` });
-  if (pp.sugars > 15) out.push({ id: "sug", cls: "w", text: `${r1(pp.sugars)} g sugar in this portion.` });
-  if (pp.sfa > 5) out.push({ id: "sfa", cls: "w", text: `${r1(pp.sfa)} g saturated fat in this portion.` });
+  if (na > 500) out.push({ id: "na", cls: "a", text: t("flagSaltHigh", { n: r0(na) }) });
+  else if (na > 250) out.push({ id: "na", cls: "w", text: t("flagSalty", { n: r0(na) }) });
+  if (pp.sugars > 15) out.push({ id: "sug", cls: "w", text: t("flagSugar", { n: r1(pp.sugars) }) });
+  if (pp.sfa > 5) out.push({ id: "sfa", cls: "w", text: t("flagSatFat", { n: r1(pp.sfa) }) });
   // Only worth saying on a food that carries carbohydrate, and only when the
   // label actually declared fibre. Blank is unknown, not zero: flagging olive
   // oil and chicken as low in fibre is noise that costs the real flags their
   // weight. Half a starch exchange is the floor for calling a food a
   // carbohydrate food at all.
   if (pp.fibre != null && pp.cho >= 8 && pp.fibre < 3)
-    out.push({ id: "fib", cls: "w",
-      text: `Low in fibre, ${r1(pp.fibre)} g against ${r1(pp.cho)} g of carbohydrate in this portion.` });
-  if (pp.k != null && pp.k > 200) out.push({ id: "k", cls: "w", text: `High in potassium, ${r0(pp.k)} mg in this portion.` });
-  if (pp.p != null && pp.pro > 0 && pp.p / pp.pro > 12)
-    out.push({ id: "p", cls: "w", text: `High in phosphorus for the protein it carries, ${r0(pp.p)} mg in this portion.` });
-  scans.forEach((sc) => out.push({ id: "scan-" + sc.id, cls: sc.cls, text: `${sc.title}: ${sc.hits.join(", ")}.` }));
+    out.push({ id: "fib", cls: "w", text: t("flagFibre", { n: r1(pp.fibre), c: r1(pp.cho) }) });
+  if (renal && pp.k != null && pp.k > 200)
+    out.push({ id: "k", cls: "w", text: t("flagPotassium", { n: r0(pp.k) }) });
+  if (renal && pp.p != null && pp.pro > 0 && pp.p / pp.pro > 12)
+    out.push({ id: "p", cls: "w", text: t("flagPhosphorus", { n: r0(pp.p) }) });
+  scans
+    .filter((sc) => renal || !RENAL_SCANS.has(sc.id))
+    .forEach((sc) => out.push({ id: "scan-" + sc.id, cls: sc.cls, text: `${t("s_" + sc.id)}: ${sc.hits.join(", ")}.` }));
   return out;
 }
 
 const USE_NOTICE_KEY = "carbx.intended-use.v1";
+
+// Phosphate and potassium additives are a kidney-diet concern. Sodium and added
+// sugar are everyone's, so they are always scanned for.
+const RENAL_SCANS = new Set(["phos", "pot"]);
+
+// Order of the food-group picker. Names come from the dictionary.
+const GROUP_IDS = ["starch", "fruit", "milk", "veg", "sweet", "protein-only", "fat-only"];
+
+const LANG_KEY = "carbx.lang.v1";
+const initialLang = () => {
+  try {
+    const saved = window.localStorage.getItem(LANG_KEY);
+    if (saved && LANGS.some((l) => l.id === saved)) return saved;
+    return (navigator.language || "").toLowerCase().startsWith("el") ? "el" : "en";
+  } catch { return "en"; }
+};
 
 
 const BLANK = { name: "", cho: "", pro: "", fat: "", fibre: "", sugars: "", sfa: "", salt: "", k: "", p: "", kcal: "", ing: "" };
@@ -219,6 +243,15 @@ export default function ExchangeLookup() {
   const [ocrLang, setOcrLang] = useState("eng+nld+deu+fra+ell");
   const [detail, setDetail] = useState(false);
   const [full, setFull] = useState(false);
+  // Potassium and phosphorus matter on a kidney diet and are noise to everyone
+  // else, so they are off unless asked for.
+  const [renal, setRenal] = useState(false);
+  const [lang, setLang] = useState(initialLang);
+  const t = translator(lang);
+  const pickLang = (id) => {
+    setLang(id);
+    try { window.localStorage.setItem(LANG_KEY, id); } catch { /* storage unavailable */ }
+  };
   // Shown once per browser. Storage can throw or be empty, so failing to read
   // it shows the notice rather than hiding it.
   const [useNotice, setUseNotice] = useState(() => {
@@ -321,90 +354,89 @@ export default function ExchangeLookup() {
   const cards = view && (
     <div className="of-cards">
       {view.dec.rounded.length === 0
-        ? <div className="of-card"><div className="k">Result</div><div className="v">0</div>
-            <div className="s">under half an exchange, counts as free</div></div>
+        ? <div className="of-card"><div className="k">{t("result")}</div><div className="v">0</div>
+            <div className="s">{t("freeFood")}</div></div>
         : view.dec.rounded.map((o) => (
             <div className="of-card" key={o.label}>
-              <div className="k">{o.label}</div><div className="v">{o.ex}</div>
-              <div className="s">exchange{o.ex === 1 ? "" : "s"}{o.gpe ? ` · ${r0(o.gpe)} g each` : ""}</div></div>))}
+              <div className="k">{t("g_" + o.labelId)}</div><div className="v">{o.ex}</div>
+              <div className="s">{o.ex === 1 ? t("exchange") : t("exchanges")}
+                {o.gpe ? ` · ${r0(o.gpe)} ${t("gEach")}` : ""}</div></div>))}
     </div>);
 
-  const GLABEL = { starch: "Starch", fruit: "Fruit", milk: "Milk", veg: "Non-starchy veg",
-                   sweet: "Sweets and other carbs", "protein-only": "Protein only", "fat-only": "Fat only" };
 
   return (
     <div className="of-root">
       <style>{CSS}</style>
       <div className="of-head">
         <span className="of-title">CarbX</span>
+        <nav className="of-langs" aria-label="Language">
+          {LANGS.map((l) => (
+            <button key={l.id} type="button" onClick={() => pickLang(l.id)}
+              aria-current={lang === l.id ? "true" : undefined}
+              data-on={lang === l.id ? 1 : 0}>{l.label}</button>))}
+        </nav>
       </div>
 
       {useNotice && (
         <div className="of-use" role="note">
-          <p>
-            <b>What this is.</b> A teaching and self-management aid that converts a nutrition
-            declaration into exchanges. It is not a medical device, it does not calculate insulin
-            doses, and it does not replace assessment by a dietitian or physician. Every figure
-            comes from the label you enter, so check the parsed values against the pack before
-            acting on them.
-          </p>
-          <button type="button" onClick={dismissUseNotice}>Understood</button>
+          <p>{t("notice")}</p>
+          <button type="button" onClick={dismissUseNotice}>{t("understood")}</button>
         </div>
       )}
 
       <div className="of-grid">
         <div className="of-rail">
           <div className="of-sect">
-            <div className="of-legend">Source</div>
+            <div className="of-legend">{t("source")}</div>
             <div className="of-seg">
-              <button data-on={src === "hand" ? 1 : 0} onClick={() => setSrc("hand")}>Manual</button>
-              <button data-on={src === "paste" ? 1 : 0} onClick={() => setSrc("paste")}>Text</button>
-              <button data-on={src === "photo" ? 1 : 0} onClick={() => setSrc("photo")}>Photo</button>
-              <button data-on={src === "off" ? 1 : 0} onClick={() => setSrc("off")}>Database</button>
+              <button data-on={src === "hand" ? 1 : 0} onClick={() => setSrc("hand")}>{t("manual")}</button>
+              <button data-on={src === "paste" ? 1 : 0} onClick={() => setSrc("paste")}>{t("text")}</button>
+              <button data-on={src === "photo" ? 1 : 0} onClick={() => setSrc("photo")}>{t("photo")}</button>
+              <button data-on={src === "off" ? 1 : 0} onClick={() => setSrc("off")}>{t("database")}</button>
             </div>
 
             {src === "paste" && (<>
-              <span className="of-lab">Nutrition declaration, as printed</span>
+              <span className="of-lab">{t("declaration")}</span>
               <textarea className="of-ta" rows={7} value={paste} onChange={(e) => setPaste(e.target.value)}
                 placeholder={"Voedingswaarde per 100 g\nEnergie 418 kcal\nVetten 14 g\nwaarvan verzadigd 6 g\nKoolhydraten 62 g\nwaarvan suikers 3 g\nVezels 4 g\nEiwitten 9 g\nZout 1,4 g\n\nIngrediënten: ..."} />
               <button className="of-btn" onClick={() => parseLabel(null)} disabled={busy || paste.trim().length < 10}>
-                {busy ? "Reading…" : "Read label"}
+                {busy ? t("reading") : t("readLabel")}
               </button>
-              <p className="of-hint">Parsed locally, in English, Dutch, German, French and Greek. Values come only from your text, never inferred.</p>
+              <p className="of-hint">{t("parsedLocally")}</p>
             </>)}
 
             {src === "photo" && (<>
-              <span className="of-lab">Photo of the nutrition panel</span>
+              <span className="of-lab">{t("photoPanel")}</span>
               <input type="file" accept="image/*" onChange={onPhoto}
                 style={{ width: "100%", fontSize: 12, color: "#5C6167", fontFamily: "var(--mono)" }} />
-              <span className="of-lab" style={{ marginTop: 8 }}>OCR language</span>
+              <span className="of-lab" style={{ marginTop: 8 }}>{t("ocrLanguage")}</span>
               <select className="of-sel" value={ocrLang} onChange={(e) => setOcrLang(e.target.value)}>
-                <option value="eng+nld+deu+fra+ell">Auto (all supported)</option>
-                <option value="eng">English</option>
-                <option value="nld">Dutch</option>
-                <option value="deu">German</option>
-                <option value="fra">French</option>
-                <option value="ell">Greek</option>
+                <option value="eng+nld+deu+fra+ell">{t("ocrAuto")}</option>
+                <option value="eng">{t("langEnglish")}</option>
+                <option value="nld">{t("langDutch")}</option>
+                <option value="deu">{t("langGerman")}</option>
+                <option value="fra">{t("langFrench")}</option>
+                <option value="ell">{t("langGreek")}</option>
               </select>
-              {busy && <p className="of-hint">Reading the panel on-device… (first run downloads OCR language data once, then works offline)</p>}
-              <p className="of-hint">Include the ingredients list for the additive scan. OCR accuracy varies, check the figures.</p>
+              {busy && <p className="of-hint">{t("ocrBusy")}</p>}
+              <p className="of-hint">{t("ocrHint")}</p>
             </>)}
 
             {src === "off" && (<>
               <div className="of-row">
                 <div className="of-f">
-                  <span className="of-lab">Database</span>
+                  <span className="of-lab">{t("dbPicker")}</span>
                   <select className="of-sel" value={cc} onChange={(e) => setCc(e.target.value)}>
-                    <option value="world">World</option><option value="nl">Netherlands</option>
-                    <option value="gr">Greece</option><option value="be">Belgium</option>
-                    <option value="de">Germany</option><option value="fr">France</option>
+                    <option value="world">{t("dbWorld")}</option><option value="nl">{t("dbNetherlands")}</option>
+                    <option value="gr">{t("dbGreece")}</option><option value="be">{t("dbBelgium")}</option>
+                    <option value="de">{t("dbGermany")}</option><option value="fr">{t("dbFrance")}</option>
                   </select>
                 </div>
               </div>
-              <span className="of-lab">Product or barcode</span>
+              <span className="of-lab">{t("productOrBarcode")}</span>
               <input className="of-in" value={q} onChange={(e) => setQ(e.target.value)}
-                     onKeyDown={(e) => e.key === "Enter" && offSearch()} placeholder="volkoren brood" />
-              <button className="of-btn" onClick={offSearch} disabled={busy}>{busy ? "Searching…" : "Search"}</button>
+                     onKeyDown={(e) => e.key === "Enter" && offSearch()} placeholder={t("productPlaceholder")} />
+              <button className="of-btn" onClick={offSearch} disabled={busy}>{busy ? t("searching") : t("search")}</button>
               {offErr && <p className="of-hint">{offErr}</p>}
               {results.length > 0 && (
                 <div className="of-res">
@@ -419,75 +451,75 @@ export default function ExchangeLookup() {
             </>)}
 
             {src === "hand" && (<>
-              <span className="of-lab">Food</span>
+              <span className="of-lab">{t("food")}</span>
               <input className="of-in" value={rec.name} onChange={(e) => set("name", e.target.value)}
-                     placeholder="description" />
-              <p className="of-hint">Per 100 g or 100 mL, straight off the pack.</p>
+                     placeholder={t("foodPlaceholder")} />
+              <p className="of-hint">{t("per100")}</p>
               <div className="of-row" style={{ marginTop: 8 }}>
-                {[["cho", "Carbs g"], ["pro", "Protein g"], ["fat", "Fat g"]].map(([k, l]) => (
+                {[["cho", t("carbsG")], ["pro", t("proteinG")], ["fat", t("fatG")]].map(([k, l]) => (
                   <div className="of-f" key={k}><span className="of-lab">{l}</span>
                     <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
               </div>
               {detail && (<>
                 <div className="of-row">
-                  {[["fibre", "Fibre g"], ["sugars", "Sugars g"], ["sfa", "Sat fat g"]].map(([k, l]) => (
+                  {[["fibre", t("fibreG")], ["sugars", t("sugarsG")], ["sfa", t("satFatG")]].map(([k, l]) => (
                     <div className="of-f" key={k}><span className="of-lab">{l}</span>
                       <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
                 </div>
                 <div className="of-row">
-                  {[["salt", "Salt g"], ["kcal", "Calories"]].map(([k, l]) => (
+                  {[["salt", t("saltG")], ["kcal", t("calories")]].map(([k, l]) => (
                     <div className="of-f" key={k}><span className="of-lab">{l}</span>
                       <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
                 </div>
                 <div className="of-row">
-                  {[["k", "Potassium mg"], ["p", "Phosphorus mg"]].map(([k, l]) => (
+                  {[["k", t("potassiumMg")], ["p", t("phosphorusMg")]].map(([k, l]) => (
                     <div className="of-f" key={k}><span className="of-lab">{l}</span>
                       <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
                 </div>
-                <span className="of-lab" style={{ marginTop: 6 }}>Ingredients list</span>
+                <span className="of-lab" style={{ marginTop: 6 }}>{t("ingredients")}</span>
                 <textarea className="of-ta" rows={3} value={rec.ing} onChange={(e) => set("ing", e.target.value)}
-                          placeholder="paste for the additive scan" />
+                          placeholder={t("ingredientsPlaceholder")} />
               </>)}
-              <button className="of-btn ghost" style={{ marginTop: 12 }} onClick={() => { setRec(BLANK); setParsed(false); setMsg(""); }}>Clear</button>
+              <button className="of-btn ghost" style={{ marginTop: 12 }} onClick={() => { setRec(BLANK); setParsed(false); setMsg(""); }}>{t("clear")}</button>
             </>)}
 
             {msg && <div className="of-warnbox">{msg}</div>}
           </div>
 
           <div className="of-sect">
-            <div className="of-legend">Basis</div>
+            <div className="of-legend">{t("basis")}</div>
             <div className="of-row">
-              <div className="of-f"><span className="of-lab">Portion g</span>
+              <div className="of-f"><span className="of-lab">{t("portionG")}</span>
                 <input className="of-in" value={portion} inputMode="decimal" onChange={(e) => setPortion(e.target.value)} /></div>
               {!detail && <div className="of-f" />}
               {detail && (
-                <div className="of-f"><span className="of-lab">Carbs per exchange</span>
+                <div className="of-f"><span className="of-lab">{t("carbsPerExchange")}</span>
                   <select className="of-sel" value={unit} onChange={(e) => setUnit(parseInt(e.target.value, 10))}>
-                    <option value={15}>15 g (US)</option><option value={10}>10 g (NL)</option>
+                    <option value={15}>{t("unit15")}</option><option value={10}>{t("unit10")}</option>
                   </select></div>)}
             </div>
             {detail && (<>
               <span className="of-lab of-labrow">
-                Food group
-                <Help label="What food group means">
-                  Which group the carbohydrate is counted from: starch, fruit, milk, vegetables or sweets.
-                  Each group carries a different amount of protein and fat per exchange, so this changes the result.
-                  Auto picks the group from the figures and the name. Set it yourself if you disagree.
-                </Help>
+                {t("foodGroup")}
+                <Help label={t("foodGroupHelpLabel")}>{t("foodGroupHelp")}</Help>
               </span>
               <select className="of-sel" value={override} onChange={(e) => setOverride(e.target.value)}>
-                <option value="">Auto{view ? `: ${GLABEL[view.auto]}` : ""}</option>
-                {Object.entries(GLABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                <option value="">{t("auto")}{view ? `: ${t("g_" + view.auto)}` : ""}</option>
+                {GROUP_IDS.map((k) => <option key={k} value={k}>{t("g_" + k)}</option>)}
               </select>
               <div className="of-check">
                 <label>
-                  <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
-                  <span>Protein list has fat tiers</span>
+                  <input type="checkbox" checked={renal} onChange={(e) => setRenal(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
+                  <span>{t("kidneyDiet")}</span>
                 </label>
-                <Help label="What protein fat tiers means">
-                  On for a list that separates lean, medium-fat and high-fat protein. Off for a single protein
-                  category. This changes the names only, the figures stay the same either way.
-                </Help>
+                <Help label={t("kidneyHelpLabel")}>{t("kidneyHelp")}</Help>
+              </div>
+              <div className="of-check">
+                <label>
+                  <input type="checkbox" checked={proTiers} onChange={(e) => setProTiers(e.target.checked)} style={{ accentColor: "var(--signal)" }} />
+                  <span>{t("proteinTiers")}</span>
+                </label>
+                <Help label={t("proteinTiersHelpLabel")}>{t("proteinTiersHelp")}</Help>
               </div>
             </>)}
           </div>
@@ -495,139 +527,123 @@ export default function ExchangeLookup() {
           <div className="of-sect">
             <button className="of-more" onClick={() => setDetail(!detail)} aria-expanded={detail}>
               <span aria-hidden="true">{detail ? "\u2212" : "+"}</span>
-              {detail ? "Fewer options" : "More options"}
+              {detail ? t("fewerOptions") : t("moreOptions")}
             </button>
-            <p className="of-hint">The rest of the label, the food group, and the
-              exchange convention.</p>
+            <p className="of-hint">{t("moreHint")}</p>
           </div>
 
           <div className="of-sect">
-            <div className="of-legend">View</div>
+            <div className="of-legend">{t("view")}</div>
             <div className="of-seg">
-              <button data-on={!full ? 1 : 0} onClick={() => setFull(false)}>Simple</button>
-              <button data-on={full ? 1 : 0} onClick={() => setFull(true)}>Detail</button>
+              <button data-on={!full ? 1 : 0} onClick={() => setFull(false)}>{t("simple")}</button>
+              <button data-on={full ? 1 : 0} onClick={() => setFull(true)}>{t("detail")}</button>
             </div>
-            <p className="of-hint">Simple gives the exchanges and anything flagged. Detail adds
-              every value behind those flags and the ingredient scan.</p>
+            <p className="of-hint">{t("viewHint")}</p>
           </div>
         </div>
 
         {/* sheet */}
         <div className="of-sheet">
           <div className="of-shead">
-            <h2>{full ? "Detail" : "Exchanges"}</h2>
-            {view && <span className="of-stamp">{r0(size)} g portion · {unit} g carbs per exchange</span>}
+            <h2>{full ? t("detailTitle") : t("exchangesTitle")}</h2>
+            {view && <span className="of-stamp">{r0(size)} {t("portionStamp")} · {unit} {t("perExchangeStamp")}</span>}
           </div>
 
           {!view && (
             <p className="of-empty">
-              {full
-                ? "Enter a food to see every value behind its flags. Paste an ingredients list too, it also scans for phosphate and potassium additives."
-                : "Enter a food to see how many exchanges the portion holds, and anything worth knowing about it."}
+              {full ? t("emptyDetail") : t("emptySimple")}
             </p>
           )}
 
           {view && !full && (<>
-            <div className="of-pname">{rec.name || "Unnamed food"}</div>
-            <div className="of-pbrand">{r0(size)} g portion</div>
+            <div className="of-pname">{rec.name || t("unnamedFood")}</div>
+            <div className="of-pbrand">{r0(size)} {t("portionStamp")}</div>
             <div className="of-why">
-              <i>{override ? "you set" : view.why.via === "name" ? "by name"
-                : view.why.via === "composition" ? "by figures" : "no match"}</i>
-              Counted as <b>{GLABEL[view.gid]}</b>
-              {override ? "." : `, because ${view.why.rule}.`}
-              {!override && view.why.via === "default"
-                && " Set the type yourself on the left if that is wrong."}
+              <i>{override ? t("viaSet") : view.why.via === "name" ? t("viaName")
+                : view.why.via === "composition" ? t("viaFigures") : t("viaDefault")}</i>
+              {t("countedAs")} <b>{t("g_" + view.gid)}</b>
+              {override ? "." : `, ${t("because")} ${t("r_" + view.why.key)}.`}
+              {!override && view.why.via === "default" && ` ${t("setYourself")}`}
             </div>
             <div style={{ marginTop: 16 }}>{cards}</div>
             <div className="of-block">
-              {plainFlags(view).length === 0
-                ? <Note kind="i">Nothing flagged in this portion.</Note>
-                : plainFlags(view).map((f) => <Note key={f.id} kind={f.cls}>{f.text}</Note>)}
+              {plainFlags(view, renal, t).length === 0
+                ? <Note kind="i">{t("nothingFlaggedPortion")}</Note>
+                : plainFlags(view, renal, t).map((f) => <Note key={f.id} kind={f.cls}>{f.text}</Note>)}
             </div>
           </>)}
 
           {view && full && (<>
-            <div className="of-pname">{rec.name || "Unnamed food"}</div>
+            <div className="of-pname">{rec.name || t("unnamedFood")}</div>
             <div className="of-pbrand">
-              {parsed ? "transcribed, check against pack" : "entered by hand"}
+              {parsed ? t("transcribed") : t("enteredByHand")}
             </div>
             <div className="of-why">
-              <i>{override ? "you set" : view.why.via === "name" ? "by name"
-                : view.why.via === "composition" ? "by figures" : "no match"}</i>
+              <i>{override ? t("viaSet") : view.why.via === "name" ? t("viaName")
+                : view.why.via === "composition" ? t("viaFigures") : t("viaDefault")}</i>
               Counted as <b>{GLABEL[view.gid]}</b>
               {override
-                ? `, set by hand. Left to itself it would have read ${GLABEL[view.auto]}, because ${view.why.rule}.`
-                : `, because ${view.why.rule}.`}
+                ? `, ${t("setByHand")} ${t("g_" + view.auto)}, ${t("because")} ${t("r_" + view.why.key)}.`
+                : `, ${t("because")} ${t("r_" + view.why.key)}.`}
             </div>
 
             <div style={{ marginTop: 16 }}>{cards}</div>
 
             {Math.abs(view.drift) > 10 && (
               <div className="of-block">
-                <Note kind="w" title="Counts are rough for this portion">
-                  Rounding to half exchanges has cost more than a tenth of the energy.
-                  {view.pp.cho >= 5
-                    ? " For a food eaten in quantity, count it in grams of carbohydrate instead."
-                    : " This portion carries almost no carbohydrate, so it is the protein and fat that round" +
-                      " badly. Half an exchange is a coarse unit on a portion this small."}
+                <Note kind="w" title={t("driftTitle")}>
+                  {view.pp.cho >= 5 ? t("driftCarb") : t("driftOther")}
                 </Note>
               </div>)}
 
             <div className="of-block">
-              <div className="of-btitle">Per portion</div>
-              <Line flag={view.na > 500 ? "a" : view.na > 250 ? "w" : ""} name="Sodium"
-                    sub={`${r1(view.pp.salt)} g salt · daily ceiling 2000 mg`} value={r0(view.na)} unit="mg" />
-              <Line flag={view.pp.sugars > 15 ? "w" : ""} name="Sugars"
-                    sub="total, not free sugars" value={r1(view.pp.sugars)} unit="g" />
-              <Line flag={view.pp.fibre != null && view.pp.cho >= 8 && view.pp.fibre < 3 ? "w" : ""} name="Fibre"
-                    sub={view.pp.fibre == null ? "not stated, treat as unknown"
-                      : `${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g per 1000 calories, aim for 14 or more`}
+              <div className="of-btitle">{t("perPortion")}</div>
+              <Line flag={view.na > 500 ? "a" : view.na > 250 ? "w" : ""} name={t("sodium")}
+                    sub={`${r1(view.pp.salt)} g ${t("sodiumSub")}`} value={r0(view.na)} unit="mg" />
+              <Line flag={view.pp.sugars > 15 ? "w" : ""} name={t("sugars")}
+                    sub={t("sugarsSub")} value={r1(view.pp.sugars)} unit="g" />
+              <Line flag={view.pp.fibre != null && view.pp.cho >= 8 && view.pp.fibre < 3 ? "w" : ""} name={t("fibre")}
+                    sub={view.pp.fibre == null ? t("notStated")
+                      : `${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g ${t("fibreSub")}`}
                     value={view.pp.fibre == null ? "n/s" : r1(view.pp.fibre)}
                     unit={view.pp.fibre == null ? "" : "g"} />
-              <Line flag={view.pp.sfa > 5 ? "w" : ""} name="Saturated fat" value={r1(view.pp.sfa)} unit="g" />
-              <Line flag={view.pp.k != null && view.pp.k > 200 ? "w" : ""} name="Potassium"
-                    sub={view.pp.k == null ? "not stated, treat as unknown"
-                      : "on a kidney diet: under 100 mg is low, 100 to 200 medium, above 200 high"}
+              <Line flag={view.pp.sfa > 5 ? "w" : ""} name={t("saturatedFat")} value={r1(view.pp.sfa)} unit="g" />
+              {renal && (<>
+              <Line flag={view.pp.k != null && view.pp.k > 200 ? "w" : ""} name={t("potassium")}
+                    sub={view.pp.k == null ? t("notStated") : t("potassiumSub")}
                     value={view.pp.k == null ? "n/s" : r0(view.pp.k)} unit={view.pp.k == null ? "" : "mg"} />
-              <Line flag={view.pp.p != null && view.pp.pro > 0 && view.pp.p / view.pp.pro > 12 ? "w" : ""} name="Phosphorus"
-                    sub={view.pp.p == null ? "not mandatory in the EU or US, see additive scan below"
-                      : `${r1(view.pp.p / Math.max(view.pp.pro, 0.1))} mg for every g of protein, aim below 12`}
+              <Line flag={view.pp.p != null && view.pp.pro > 0 && view.pp.p / view.pp.pro > 12 ? "w" : ""} name={t("phosphorus")}
+                    sub={view.pp.p == null ? t("phosphorusNotStated")
+                      : `${r1(view.pp.p / Math.max(view.pp.pro, 0.1))} ${t("phosphorusSub")}`}
                     value={view.pp.p == null ? "n/s" : r0(view.pp.p)} unit={view.pp.p == null ? "" : "mg"} />
+              </>)}
             </div>
 
             <div className="of-block">
-              <div className="of-btitle">Ingredient scan</div>
+              <div className="of-btitle">{t("ingredientScan")}</div>
               {!rec.ing.trim() && <p style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                No ingredients list entered. Paste one on the left to scan for phosphate, potassium, sodium and added-sugar sources.</p>}
-              {rec.ing.trim() && view.scans.length === 0 && (
-                <Note kind="i" title="Nothing flagged">
-                  No phosphate, potassium, sodium or added-sugar terms matched. The scan reads text, so an unlisted or
-                  differently-worded additive will be missed.
+                {renal ? t("noIngredientsRenal") : t("noIngredients")}</p>}
+              {rec.ing.trim() && view.scans.filter((s) => renal || !RENAL_SCANS.has(s.id)).length === 0 && (
+                <Note kind="i" title={t("nothingFlagged")}>
+                  {renal ? t("nothingMatchedRenal") : t("nothingMatchedScan")}
                 </Note>)}
-              {view.scans.map((s) => (
-                <Note key={s.id} kind={s.cls} title={s.title}>
+              {view.scans.filter((s) => renal || !RENAL_SCANS.has(s.id)).map((s) => (
+                <Note key={s.id} kind={s.cls} title={t("s_" + s.id)}>
                   <span>{s.hits.map((h) => <span className="of-hit" key={h}>{h}</span>)}</span>
-                  {s.id === "phos" && <div style={{ marginTop: 6 }}>
-                    Additive phosphorus is absorbed close to completely, against roughly 40-60% for the phytate-bound
-                    phosphorus in plant foods. This product therefore carries more absorbable load than any composition
-                    table would show. In CKD, clearing additive sources usually gains more than restricting whole foods.
-                  </div>}
-                  {s.id === "pot" && <div style={{ marginTop: 6 }}>
-                    Typical of reduced-sodium products: potassium chloride replaces salt, which helps blood
-                    pressure but works against a potassium restriction.
-                  </div>}
+                  {s.id === "phos" && <div style={{ marginTop: 6 }}>{t("phosNote")}</div>}
+                  {s.id === "pot" && <div style={{ marginTop: 6 }}>{t("potNote")}</div>}
                 </Note>))}
             </div>
 
             <p className="of-src">
-              Every figure here comes from what you entered. Nothing is estimated.{" "}
+              {t("provenance")}{" "}
               <a href="https://github.com/gmiliarakis/carbx#reference" target="_blank" rel="noreferrer">
-                How this is worked out
+                {t("howWorkedOut")}
               </a>
             </p>
           </>)}
 
-          <div className="of-foot">Check before use.</div>
+          <div className="of-foot">{t("checkBeforeUse")}</div>
         </div>
       </div>
     </div>

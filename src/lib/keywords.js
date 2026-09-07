@@ -100,6 +100,50 @@ export const KEYWORDS = {
   },
 
   // --------------------------------------------------------------- milk ---
+  // Plant dairy is the common case where a dairy name sits on a food that is
+  // not dairy. They are kept out of the dairy list so that inferGroup can say
+  // which of the two they turned out to be: soy carries protein in a milk-like
+  // ratio and counts as a milk exchange, oat and rice do not and are counted on
+  // the carbohydrate they carry. Terms are the full compound ("havermelk", not
+  // "haver"), so the longest-match ranking keeps oats on the starch list.
+  plantDairy: {
+    any: [
+      // English
+      "soy milk", "soya milk", "soy drink", "soya drink", "soymilk",
+      "oat milk", "oat drink", "oatmilk", "rice milk", "rice drink",
+      "almond milk", "almond drink", "cashew milk", "cashew drink",
+      "hazelnut milk", "hazelnut drink", "coconut milk drink", "coconut drink",
+      "pea milk", "pea drink", "plant milk", "plant-based milk",
+      "plant drink", "plant-based drink", "vegan milk", "barista oat",
+      "barista edition", "oat barista",
+      "soy yogurt", "soy yoghurt", "soya yogurt", "soya yoghurt",
+      "coconut yogurt", "coconut yoghurt", "oat yogurt", "oat yoghurt",
+      "almond yogurt", "almond yoghurt", "plant-based yogurt", "vegan yogurt",
+      "vegan yoghurt", "soy cream", "oat cream",
+      // Dutch
+      "sojamelk", "sojadrink", "havermelk", "haverdrink", "rijstmelk",
+      "rijstdrink", "amandelmelk", "amandeldrink", "kokosdrink",
+      "cashewdrink", "erwtendrink", "plantaardige drink", "plantaardige melk",
+      "sojayoghurt", "kokosyoghurt", "haveryoghurt", "amandelyoghurt",
+      "plantaardige yoghurt", "sojaroom", "haverroom",
+      // German
+      "sojamilch", "hafermilch", "haferdrink", "reismilch",
+      "reisdrink", "mandelmilch", "mandeldrink",
+      "pflanzendrink", "pflanzlicher drink", "haferbarista",
+      "sojajoghurt", "kokosjoghurt", "haferjoghurt", "pflanzlicher joghurt",
+      // French
+      "lait de soja", "boisson au soja", "lait d'avoine", "boisson à l'avoine",
+      "lait de riz", "boisson au riz", "lait d'amande", "boisson à l'amande",
+      "lait de coco à boire", "boisson végétale", "lait végétal",
+      "yaourt au soja", "yaourt végétal", "yaourt à la noix de coco",
+      // Greek
+      "ρόφημα σόγιας", "γάλα σόγιας", "σογιόγαλα", "ρόφημα βρώμης",
+      "γάλα βρώμης", "ρόφημα ρυζιού", "γάλα ρυζιού", "ρόφημα αμυγδάλου",
+      "αμυγδαλόγαλα", "ρόφημα καρύδας", "φυτικό ρόφημα", "φυτικό γάλα",
+      "γιαούρτι σόγιας", "φυτικό γιαούρτι", "γιαούρτι καρύδας",
+    ],
+  },
+
   milk: {
     any: [
       // English
@@ -430,7 +474,7 @@ export const KEYWORDS = {
       // English, starchy vegetables and legumes
       "potato", "yam", "cassava", "plantain", "corn", "polenta", "peas",
       "parsnip", "pastinaak", "panais", "παστινάκη",
-      "lentil", "bean", "chickpea", "hummus", "popcorn", "pretzel",
+      "lentil", "bean", "chickpea", "hummus", "falafel", "φαλάφελ", "popcorn", "pretzel",
       "butternut", "winter squash", "pumpkin",
       // English, sweets and baked goods
       "croissant",

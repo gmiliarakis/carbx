@@ -1,10 +1,17 @@
 # CarbX
 
-Web-based exchange-list calculator for diabetes, kidney and weight loss diets in 5 languages.
+Exchange-list calculator for the foods the printed lists do not cover. Enter a
+nutrition label and CarbX works out which food group it belongs to and how many
+exchanges the portion holds, for diabetes, kidney and weight loss diets, in five
+languages.
 
 ### [carbx.gmiliarakis.com](https://carbx.gmiliarakis.com)
 
-
+![An oat drink entered into CarbX. It is counted as 1 starch and 1.5 fat
+exchanges, with the reason given as "it is a plant drink, which the exchange
+list counts on the carbohydrate it carries rather than as a milk exchange". The
+kidney diet switch is on, so the ingredient scan has flagged the dipotassium
+phosphate in it as an additive phosphate source.](docs/carbx.png)
 
 ✅ no account needed\
 ✅ no backend\
@@ -18,7 +25,7 @@ CarbX is a teaching and self-management aid. It converts a nutrition
 declaration into exchanges and flags what a diabetes or kidney diet watches.
 
 It is not a medical device. It does not calculate insulin doses. It does not
-replace assessment by a dietitian or physician, and it holds no clinical
+replace assessment by a dietitian, and it holds no clinical
 context: it knows nothing about the person eating the food, their renal
 function, their insulin regimen or their targets. Every figure it shows is
 derived from the label you gave it, so a mistyped or misread label produces a
@@ -42,11 +49,11 @@ iv. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German
 **3. Read output**
    - exchanges per portion
    - grams of this food per exchange
-   - flags on sodium, sugar, saturated fat, potassium and phosphorus
+   - flags on sodium, sugars, fibre, saturated fat, potassium and phosphorus, and on rounding drift
 
 Macronutrients (carbohydrate, protein and fat) are the only required fields. Paste the ingredients list to scan for phosphate, potassium, sodium and sugar additives.
 
-Each result says which group it was counted as and whether the name or the figures decided it. The assigned group can always be overridden. The ledger shows the unrounded working, and the drift figure shows how much energy the rounding cost.
+Each result says which group it was counted as and whether the name or the figures decided it. The assigned group can always be overridden. Where rounding to half exchanges costs more than a tenth of the energy, the portion is flagged as rough.
 
 ## Terminology
 
@@ -74,12 +81,12 @@ The table is the US reference, scaled by `unit / 15` to serve all three conventi
 | Fruit              | 15    | 0         | 0     |
 | Milk               | 12    | 8         | 0     |
 | Non-starchy veg    | 5     | 2         | 0     |
-| Sweets / other CHO | 15    | 0         | 0     |
+| Sweets and other carbs | 15 | 0 | 0 |
 
 A protein exchange is 7 g of protein. The fat alongside it sets the tier: up to 3 g is lean (2 g fat), above 3 up to 7 is medium (5 g), above 7 is high (8 g). A
 fat exchange is 5 g.
 
-`decompose()` runs three stages, each on the residual the last one left:
+`decompose()` runs two stages, the second on the residual the first left:
 
 1. **Carbohydrate.** If >0.4 g available, draws `cho / group.cho` exchanges, consuming the carbohydrate exactly. The group's protein and fat net off too, capped at what the food holds. `protein-only` and `fat-only` are classifications rather than table entries, so their carbohydrate is skipped here and never enters an exchange. The protein stage is skipped for `fat-only` and for `sweet`: the exchange list writes both as carbohydrate or fat and never as protein, so a chocolate bar's few grams of protein must not become a protein exchange and absorb the food's fat with it.
 2. **Protein, then fat.** Above 1.2 g residual protein, `protein / 7` exchanges at the tier its residual fat implies. Above 1.2 g residual fat, `fat / 5`.
@@ -102,30 +109,74 @@ chocolate, olive bread.
 
 | # | Test | Result |
 | - | ---- | ------ |
-| 1 | fat keyword, and either fat leads 60% of the energy or CHO and protein are both under 5 g | `fat-only` |
-| 2 | dairy keyword, protein standing in a milk-like ratio to the carbohydrate, and either both above 2 g or the portion carrying a full milk exchange of protein | `milk` |
-| 3 | protein, fruit, vegetable, sweets and starch keywords, ranked by longest match, each with its own gate | the first whose gate passes |
-| 4 | over 70% of energy from fat, CHO and protein under 5 g | `fat-only` |
-| 5 | over 75% of energy from fat, protein under 2 g, CHO under 15 g | `fat-only` |
-| 6 | CHO 2 to 15 g, no fibre, sugars at least 70% of CHO, milk-like protein ratio | `milk` |
-| 7 | over 40% of energy from protein, CHO under 5 g | `protein-only` |
-| 8 | CHO at least 2 g, sugars at least 90% of CHO, protein and fat under 1 g, little or no fibre | `sweet` |
-| 9 | CHO under 2 g, protein above 5 g | `protein-only` |
-| 10 | CHO up to 8 g, fat under 3 g, vegetable-like protein ratio | `veg` |
-| 11 | CHO 8 to 35 g, fat under 3 g, fibre at least 0.3 g, sugars at least 45% of CHO, almost no protein | `fruit` |
+| 1 | plant-dairy keyword, CHO at least 2 g | `starch` |
+| 1b | plant-dairy keyword, CHO under 2 g, protein at least 2 g | `protein-only` |
+| 2 | fat keyword, and either fat leads 60% of the energy or CHO and protein are both under 5 g | `fat-only` |
+| 3 | dairy keyword, protein standing in a milk-like ratio to the carbohydrate, and either both above 2 g or the portion carrying a full milk exchange of protein | `milk` |
+| 4 | protein, fruit, vegetable, sweets and starch keywords, ranked by longest match, each with its own gate | the first whose gate passes |
+| 5 | over 70% of energy from fat, CHO and protein under 5 g | `fat-only` |
+| 6 | over 75% of energy from fat, protein under 2 g, CHO under 15 g | `fat-only` |
+| 7 | CHO 2 to 15 g, no fibre, sugars at least 70% of CHO, milk-like protein ratio | `milk` |
+| 8 | over 40% of energy from protein, CHO under 5 g | `protein-only` |
+| 9 | CHO at least 2 g, sugars at least 90% of CHO, protein and fat under 1 g, little or no fibre | `sweet` |
+| 10 | CHO under 2 g, protein above 5 g | `protein-only` |
+| 11 | CHO up to 8 g, fat under 3 g, vegetable-like protein ratio | `veg` |
+| 12 | CHO 8 to 35 g, fat under 3 g, fibre at least 0.3 g, sugars at least 45% of CHO, almost no protein | `fruit` |
 |  | nothing matched | `starch` |
 
-Rule 11 catches fruit named in a language the keyword list does not cover. The
+Rule 12 catches fruit named in a language the keyword list does not cover. The
 fibre floor keeps sugary drinks and honey out. Dried fruit exceeds the upper
 bound and depends on the name list.
 
-Rule 5 exists because of imitation cheeses: coconut oil and starch, no protein
+Rule 6 exists because of imitation cheeses: coconut oil and starch, no protein
 at all, under a name that reads as dairy. Without it they reached the starch
-default. Rule 3's ranking by longest keyword is what makes "aardappel" beat
+default. Rule 4's ranking by longest keyword is what makes "aardappel" beat
 "appel", "buttermilk" beat "butter" and "green bean" beat "bean".
 
 The Dutch stems `ei` (egg) and `vis` (fish) match at a word start only, so
 `protein` and `provisions` do not trigger the protein branch.
+
+### Plant dairy
+
+Rule 1 runs ahead of the fat and dairy rules, which both win outright, because
+every plant-drink name contains one of their keywords: "almond" inside "almond
+milk", "milk" inside "oat milk". Ordered the other way, a sweetened almond drink
+matched the nut list and its carbohydrate went uncounted.
+
+**No plant drink counts as a milk exchange, soy included.** The 2007 list
+settles this in its Dairy-Like Foods section, which counts a cup of plain rice
+drink as "1 carbohydrate" and a cup of plain soy milk as "1 carbohydrate and
+1 fat". Where the list means a milk exchange it writes one, as it does two
+entries above for chocolate milk: "1 fat-free milk and 1 carbohydrate". So a
+plant drink is counted on the carbohydrate it carries, and its protein and fat
+fall out in the later stages instead of being absorbed into a milk exchange.
+An unsweetened soy drink therefore comes out as carbohydrate plus a protein
+exchange, which is closer to what is in it than half a milk exchange would be.
+
+This is worth knowing if you expected soy to behave as a dairy swap. It is a
+substitute in the kitchen, and the exchange list still does not count it as one.
+
+Two deliberate exclusions. `coconut milk` is not a plant-drink name, so canned
+coconut milk at 21 g of fat stays on the fat list where it belongs; `coconut
+drink` is. An unsweetened almond drink carries so little of anything that it
+falls through to the composition rules and rounds away to a free food, which is
+what it is.
+
+Yoghurts and creams are in the same list as the drinks, since the 2007 list
+treats the whole Dairy-Like Foods category the same way. One extra branch
+handles them: a plain soy yoghurt carries about 1 g of carbohydrate against 4 g
+of protein, which satisfies the vegetable rule, so without the name it was
+counted as a vegetable. Under 2 g of carbohydrate with protein present, plant
+dairy counts as protein.
+
+Names are the full compound, `havermelk` rather than `haver`, so the
+longest-match ranking keeps oats, rice and almonds themselves on their own
+lists.
+
+Other vegan foods do not need a rule of their own: tofu, tempeh and seitan are
+on the protein list, falafel, hummus and edamame on the starch list beside the
+other legumes, and coconut-oil cheese analogues are caught by rule 6 on
+composition alone.
 
 The sweets list used to live inside the starch keyword list, since both carry
 15 g of carbohydrate. They are separate now, because they do not carry the same
@@ -152,7 +203,7 @@ Each field takes the first match in the document, so a two-column label printing
 per-100 g beside per-serving can take the wrong column.
 
 **OCR** is [tesseract.js](https://github.com/naptha/tesseract.js) 7, defaulting
-to `eng+nld+fra+ell` and selectable per language. Recognition is local, but
+to `eng+nld+deu+fra+ell` and selectable per language. Recognition is local, but
 the library pulls its worker script, wasm core and language data from public
 CDNs on first use, then caches them. Output goes through the same parser.
 
@@ -166,12 +217,15 @@ sodium × 2.5.
 `scanIngredients()` matches E-numbers on a word boundary and additive names by
 regex, then deduplicates.
 
-| Category    | E-numbers                                                          | Names in              |
-| ----------- | ------------------------------------------------------------------ | --------------------- |
-| Phosphate   | 338, 339, 340, 341, 343, 442, 450, 451, 452, 1410, 1412, 1413, 1414, 1442 | English, Dutch, Greek |
-| Potassium   | 340, 501, 508, 515, 525, 536                                       | English, Dutch, Greek |
-| Sodium      | 250, 251, 252, 262, 281, 500, 621, 627, 631                        | English, Dutch        |
-| Added sugar | none, this category is name-only                                   | English, Dutch, Greek |
+| Category    | E-numbers                                                                |
+| ----------- | ------------------------------------------------------------------------ |
+| Phosphate   | 338, 339, 340, 341, 343, 442, 450, 451, 452, 1410, 1412, 1413, 1414, 1442 |
+| Potassium   | 340, 501, 508, 515, 525, 536                                             |
+| Sodium      | 250, 251, 252, 262, 281, 500, 621, 627, 631                              |
+| Added sugar | none, this category is name-only                                         |
+
+Additive names are matched in all five languages the parser reads. E-numbers
+carry no language, so they match wherever they appear.
 
 `E4500` does not match `E450`, and a bare number without an `E` prefix does not
 match at all.
@@ -188,6 +242,11 @@ match at all.
 | Potassium     | above 200 mg              |              |
 | Phosphorus    | above 12 mg per g protein |              |
 | Energy drift  | above 10% either way      |              |
+
+Potassium and phosphorus, and the phosphate and potassium additive scans, are
+behind a **Kidney diet** switch that is off by default. Those two minerals are
+what a renal diet turns on and are noise to everyone else; sodium and added
+sugar are scanned either way.
 
 A blank field is unknown, not zero. Potassium, phosphorus and fibre all report
 `n/s` when the label omits them, and no flag fires on a value that was never
@@ -216,7 +275,7 @@ Unit tests show the code does what it was told to do. They say nothing about
 whether the exchanges are the right ones. [validation/VALIDATION.md](validation/VALIDATION.md)
 is the other half: twenty real supermarket products, Greek and Dutch, with
 barcodes, worked through against the method as written down here. The recount
-in `validation/build.mjs` is a separate transcription of the three stages and
+in `validation/build.mjs` is a separate transcription of those stages and
 does not call `decompose()`, so the two agreeing is evidence the implementation
 matches its own description.
 
@@ -300,6 +359,28 @@ of a nutriment (in g, or kJ for energy) for 100 g or 100 ml of product"
 ([data-fields.txt](https://world.openfoodfacts.org/data/data-fields.txt)).
 Potassium and phosphorus are converted to milligrams on import; salt is already
 in grams. The database is crowd-sourced and unverified.
+
+## Interface languages
+
+English and Greek, switched by the `en ελ` links in the header. The choice is
+remembered in the browser and, on a first visit, taken from the browser's own
+language.
+
+`src/i18n.js` holds both dictionaries. Nothing in the interface holds a literal
+string: every label, help note, flag sentence and classification reason is
+looked up by key, and `src/lib/i18n.test.js` fails when a key exists in one
+language and not the other, when a placeholder such as `{n}` appears in one
+language and not the other, or when the classifier starts producing an id the
+dictionary has never heard of. A half-translated release cannot ship.
+
+The label parser is unaffected: it reads five languages whichever language the
+interface is in. The switch changes what CarbX says, not what it can read.
+
+The Greek was drafted alongside the English and has not been reviewed by a
+second Greek dietitian. The classification sentences are the ones to read
+first, since they explain clinical reasoning rather than naming a control. An
+exchange is *ισοδύναμο*, never a calque such as *ανταλλαγή*; a food group is
+*ομάδα τροφίμων*.
 
 ## Typography
 

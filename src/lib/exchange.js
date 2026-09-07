@@ -16,13 +16,13 @@ export function groups(unit) {
     fruit:  { id: "fruit",  label: "Fruit",  cho: 15 * k, pro: 0, fat: 0 },
     milk:   { id: "milk",   label: "Milk",   cho: 12 * k, pro: 8, fat: 0 },
     veg:    { id: "veg",    label: "Non-starchy veg", cho: 5 * k, pro: 2, fat: 0 },
-    sweet:  { id: "sweet",  label: "Sweets / other CHO", cho: 15 * k, pro: 0, fat: 0 },
+    sweet:  { id: "sweet",  label: "Sweets and other carbs", cho: 15 * k, pro: 0, fat: 0 },
   };
 }
 export const TIERS = [
-  { label: "Lean protein", fat: 2, max: 3 },
-  { label: "Medium-fat protein", fat: 5, max: 7 },
-  { label: "High-fat protein", fat: 8, max: 1e9 },
+  { id: "lean", label: "Lean protein", fat: 2, max: 3 },
+  { id: "medium", label: "Medium-fat protein", fat: 5, max: 7 },
+  { id: "high", label: "High-fat protein", fat: 8, max: 1e9 },
 ];
 
 // The milk list has three fat variants sharing 12 g of carbohydrate and 8 g of
@@ -32,9 +32,9 @@ export const TIERS = [
 // is charged the fat actually on the label, so a fat-free yoghurt declaring
 // 1.6 g is a fat-free milk exchange carrying 1.6 g, not 0.
 export const MILK_TIERS = [
-  { label: "Fat-free milk", fat: 0, max: 3 },
-  { label: "Reduced-fat milk", fat: 5, max: 7 },
-  { label: "Whole milk", fat: 8, max: 1e9 },
+  { id: "milkFatFree", label: "Fat-free milk", fat: 0, max: 3 },
+  { id: "milkReduced", label: "Reduced-fat milk", fat: 5, max: 7 },
+  { id: "milkWhole", label: "Whole milk", fat: 8, max: 1e9 },
 ];
 
 // The protein and fat exchanges, kept here with the rest of the reference
@@ -179,8 +179,42 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // evidence against a food, only stated data can rule something out.
   const fibreStated = num(p.fibre) != null;
   const score = (g) => keywordScore(g, t);
-  const byName = (group, rule) => ({ group, via: "name", rule });
-  const byMacros = (group, rule) => ({ group, via: "composition", rule });
+  // `key` names the sentence so the interface can render it in another
+  // language. The English text stays here as the canonical wording.
+  const byName = (group, rule, key) => ({ group, via: "name", rule, key });
+  const byMacros = (group, rule, key) => ({ group, via: "composition", rule, key });
+
+  const portionPro = p.pro * (portionG / 100);
+  // A dairy word is only dairy when the food carries protein against its
+  // carbohydrate and is not mostly fat. Sweetening a yoghurt dilutes the ratio,
+  // so the floor is low, but milk chocolate sits below it and is 30 g of fat
+  // besides, and "milk roll" and "milk chocolate" are both rejected.
+  // Fat alone cannot rule dairy out: strained yoghurt and whole milk powder
+  // both carry more than 12 g. What separates them from milk chocolate is that
+  // their protein still stands in a milk-like ratio to their carbohydrate.
+  const milkRatio = G.milk.pro / G.milk.cho;
+  const dairyLike = proPerCho >= milkRatio * 0.3
+    && (p.fat < 12 || proPerCho >= milkRatio * 0.75);
+  const milkPortion = (p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro;
+
+  // Plant dairy wears a dairy name without being dairy. The 2007 list settles
+  // where it goes: its Dairy-Like Foods section counts a cup of rice drink as
+  // "1 carbohydrate" and a cup of plain soy milk as "1 carbohydrate + 1 fat",
+  // never as a milk exchange, which it writes out where it means one ("1
+  // fat-free milk" for chocolate milk two lines above). So every plant drink,
+  // soy included, is counted on the carbohydrate it carries, and its protein
+  // and fat fall out in the later stages rather than being absorbed by a milk
+  // exchange. An unsweetened drink carrying almost nothing falls through to the
+  // composition rules, where it lands as a free food.
+  if (score("plantDairy") > 0) {
+    if (p.cho >= 2)
+      return byName("starch", "it is a plant dairy food, which the exchange list counts on the carbohydrate it carries rather than as a milk exchange", "plantDairyCarb");
+    // A plain soy yoghurt carries almost no carbohydrate and several grams of
+    // protein. Without this it reached the vegetable rule, which only asks for
+    // low carbohydrate and some protein alongside it.
+    if (p.pro >= 2)
+      return byName("protein-only", "it is a plant dairy food carrying protein and almost no carbohydrate, so it counts as protein rather than as a milk exchange", "plantDairyProtein");
+  }
 
   // Fat first, and it wins outright over a longer name from another group,
   // because a fat name plus fat-dominant macros is not ambiguous: "cream
@@ -189,24 +223,12 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // is that fat dominates the energy rather than that protein is absent. It is
   // what keeps "olive bread" and "peanut butter cookies" out.
   if (score("fat") > 0 && (fatPct >= 0.6 || (p.cho < 5 && p.pro < 5)))
-    return byName("fat-only", "the name matched the fat list and the macros agree");
+    return byName("fat-only", "the name matched the fat list and the macros agree", "nameFat");
 
-  const portionPro = p.pro * (portionG / 100);
-  // A dairy word is only dairy when the food carries protein against its
-  // carbohydrate and is not mostly fat. Sweetening a yoghurt dilutes the ratio,
-  // so the floor is low, but milk chocolate sits below it and is 30 g of fat
-  // besides, and "milk roll" and "milk chocolate" are both rejected. Dairy also
-  // wins outright, so "chocolate milk" is milk while "milk chocolate", failing
-  // the gate, falls through to the sweets in the starch list.
-  // Fat alone cannot rule dairy out: strained yoghurt and whole milk powder
-  // both carry more than 12 g. What separates them from milk chocolate is that
-  // their protein still stands in a milk-like ratio to their carbohydrate.
-  const milkRatio = G.milk.pro / G.milk.cho;
-  const dairyLike = proPerCho >= milkRatio * 0.3
-    && (p.fat < 12 || proPerCho >= milkRatio * 0.75);
-  if (score("milk") > 0 && dairyLike
-      && ((p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro))
-    return byName("milk", "the name matched the dairy list and the protein stands in a milk-like ratio to the carbohydrate");
+  // Dairy wins outright, so "chocolate milk" is milk while "milk chocolate",
+  // failing the gate, falls through to the sweets list.
+  if (score("milk") > 0 && dairyLike && milkPortion)
+    return byName("milk", "the name matched the dairy list and the protein stands in a milk-like ratio to the carbohydrate", "nameDairy");
 
   // A fruit word is often a flavour rather than the food: apple pie, banana
   // bread, strawberry yoghurt, lemonade, cherry cola, fruit squash. The name is
@@ -228,28 +250,28 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
     // worth of carbohydrate, which is what a breadcrumb coating or a cracker
     // does. Feta at 6.7 g and a soft cheese at 5.3 g are still protein.
     protein: () => (p.cho < 12
-      ? byName("protein-only", "the name matched the protein list")
-      : byName("starch", "the name matched the protein list, but the food carries a starch exchange of carbohydrate")),
+      ? byName("protein-only", "the name matched the protein list", "nameProtein")
+      : byName("starch", "the name matched the protein list, but the food carries a starch exchange of carbohydrate", "nameProteinStarchy")),
     fruit: () => (contradictsFruit
       ? null
-      : byName("fruit", "the name matched the fruit list and nothing in the macros contradicts it")),
+      : byName("fruit", "the name matched the fruit list and nothing in the macros contradicts it", "nameFruit")),
     // A vegetable exchange is 5 g of carbohydrate, so a vegetable name on a
     // food carrying more than about two of them is a dish, not a vegetable.
     // Fat is deliberately not part of the gate: roasted vegetables are still
     // vegetables, and decompose turns the oil into fat exchanges by itself.
     veg: () => (p.cho <= 12
-      ? byName("veg", "the name matched the vegetable list and the carbohydrate is low enough for one")
+      ? byName("veg", "the name matched the vegetable list and the carbohydrate is low enough for one", "nameVeg")
       : null),
     // The sweets list carries 15 g of carbohydrate and nothing else, which is
     // what separates it from starch. The gate is that the food actually carries
     // the carbohydrate: a sugar-free version of the same product does not.
     sweet: () => (p.cho >= 8
-      ? byName("sweet", "the name matched the sweets list and the food carries carbohydrate")
+      ? byName("sweet", "the name matched the sweets list and the food carries carbohydrate", "nameSweet")
       : null),
     // The gate is only that the food actually carries carbohydrate: a
     // "cauliflower rice" does not.
     starch: () => (p.cho >= 8
-      ? byName("starch", "the name matched the starch list and the food carries carbohydrate")
+      ? byName("starch", "the name matched the starch list and the food carries carbohydrate", "nameStarch")
       : null),
   };
   const ranked = Object.keys(gates)
@@ -267,7 +289,7 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // is at all. The ratios are read off the group table, not written out here.
   // Barely any fat-free carbohydrate: a fat, not a carbohydrate food.
   if (fatPct > 0.7 && p.cho < 5 && p.pro < 5)
-    return byMacros("fat-only", "over 70% of the energy is fat, with little carbohydrate or protein");
+    return byMacros("fat-only", "over 70% of the energy is fat, with little carbohydrate or protein", "macroFatDominant");
 
   // A food whose energy is almost entirely fat and which carries no protein at
   // all is a fat exchange even when it declares some carbohydrate. Coconut-oil
@@ -275,7 +297,7 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // protein, and a name that reads as cheese. The protein floor is what keeps
   // real foods carrying both out of this branch.
   if (fatPct > 0.75 && p.pro < 2 && p.cho < 15)
-    return byMacros("fat-only", "the energy is almost all fat, with no protein to speak of and little carbohydrate");
+    return byMacros("fat-only", "the energy is almost all fat, with no protein to speak of and little carbohydrate", "macroFatNoProtein");
 
   // Milk is checked before the protein rules. Dairy carries a lot of protein
   // against little carbohydrate, so a plain yoghurt would otherwise read as a
@@ -284,7 +306,7 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // fibre. The protein ratio is what keeps a watery vegetable out.
   if (p.cho >= 2 && p.cho <= 15 && fibre < 1 && sugarFrac >= 0.7
       && proPerCho >= (G.milk.pro / G.milk.cho) * 0.75)
-    return byMacros("milk", "sugar carbohydrate with no fibre, carrying protein in a milk-like ratio");
+    return byMacros("milk", "sugar carbohydrate with no fibre, carrying protein in a milk-like ratio", "macroMilk");
 
   // Carbohydrate that is essentially all sugar, with nothing else in it: a soft
   // drink, a squash, a syrup, honey. This is the sweets list. It is not starch,
@@ -293,19 +315,19 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // rules above, so anything arriving here was never named as one.
   if (p.cho >= 2 && sugarFrac >= 0.9 && p.pro < 1 && p.fat < 1
       && (!fibreStated || fibre < 0.5))
-    return byMacros("sweet", "the carbohydrate is almost entirely sugar, with no protein, fat or fibre alongside it");
+    return byMacros("sweet", "the carbohydrate is almost entirely sugar, with no protein, fat or fibre alongside it", "macroSweet");
 
   // Otherwise, barely any carbohydrate means a protein.
   if (proPct > 0.4 && p.cho < 5)
-    return byMacros("protein-only", "over 40% of the energy is protein, with under 5 g of carbohydrate");
+    return byMacros("protein-only", "over 40% of the energy is protein, with under 5 g of carbohydrate", "macroProteinShare");
   if (p.cho < 2 && p.pro > 5)
-    return byMacros("protein-only", "almost no carbohydrate, with protein present");
+    return byMacros("protein-only", "almost no carbohydrate, with protein present", "macroProteinLowCarb");
 
   // Nonstarchy vegetable: 5 g of carbohydrate against 2 g of protein, so little
   // carbohydrate with protein alongside it. That protein is what separates a
   // vegetable from a sugary drink carrying the same carbohydrate.
   if (p.cho <= 8 && p.fat < 3 && proPerCho >= (G.veg.pro / G.veg.cho) * 0.4)
-    return byMacros("veg", "little carbohydrate with vegetable-like protein alongside it");
+    return byMacros("veg", "little carbohydrate with vegetable-like protein alongside it", "macroVeg");
 
   // Fruit: 15 g of carbohydrate and no protein, mostly sugar, with some fibre.
   // Carrying next to no protein is what separates it from starch and milk, and
@@ -313,9 +335,9 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
   // does not cover; dried fruit is too concentrated to fit and relies on names.
   if (p.cho >= 8 && p.cho <= 35 && p.fat < 3 && fibre >= 0.3 && sugarFrac >= 0.45
       && proPerCho < (G.starch.pro / G.starch.cho) * 0.5)
-    return byMacros("fruit", "mostly-sugar carbohydrate with some fibre and almost no protein or fat");
+    return byMacros("fruit", "mostly-sugar carbohydrate with some fibre and almost no protein or fat", "macroFruit");
 
-  return { group: "starch", via: "default",
+  return { group: "starch", via: "default", key: "noMatch",
     rule: "neither the name nor the composition matched a group, so it falls to starch" };
 }
 
@@ -355,11 +377,11 @@ export function decompose(p, unit, groupId, opts = {}) {
     if (g.id === "milk") {
       const fatPer = fat / ex;
       const tier = MILK_TIERS.find((t) => fatPer <= t.max) || MILK_TIERS[2];
-      g = { ...g, label: tier.label, fat: fatPer };
+      g = { ...g, id: tier.id, label: tier.label, fat: fatPer };
     }
     const dP = Math.min(pro, ex * g.pro), dF = Math.min(fat, ex * g.fat);
     cho -= ex * g.cho; pro -= dP; fat -= dF;
-    out.push({ label: g.label, ex, ref: g });
+    out.push({ label: g.label, labelId: g.id, ex, ref: g });
     steps.push({ kind: "draw", label: `${r1(ex)} × ${g.label}`, cho: -(ex * g.cho), pro: -dP, fat: -dF });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
@@ -374,16 +396,17 @@ export function decompose(p, unit, groupId, opts = {}) {
     const ex = pro / PROTEIN_EXCHANGE.pro, fatPer = fat / ex;
     const tier = TIERS.find((t) => fatPer <= t.max) || TIERS[2];
     const label = proteinTiers ? tier.label : "Protein";
+    const labelId = proteinTiers ? tier.id : "protein";
     const refFat = fatPer;
     const dF = Math.min(fat, ex * refFat);
     pro -= ex * PROTEIN_EXCHANGE.pro; fat -= dF;
-    out.push({ label, ex, ref: { ...PROTEIN_EXCHANGE, fat: refFat } });
+    out.push({ label, labelId, ex, ref: { ...PROTEIN_EXCHANGE, fat: refFat } });
     steps.push({ kind: "draw", label: `${r1(ex)} × ${label}`, cho: 0, pro: -(ex * PROTEIN_EXCHANGE.pro), fat: -dF });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
   if (fat > 1.2) {
     const ex = fat / FAT_EXCHANGE.fat; fat -= ex * FAT_EXCHANGE.fat;
-    out.push({ label: "Fat", ex, ref: FAT_EXCHANGE });
+    out.push({ label: "Fat", labelId: "fat", ex, ref: FAT_EXCHANGE });
     steps.push({ kind: "draw", label: `${r1(ex)} × Fat`, cho: 0, pro: 0, fat: -(ex * FAT_EXCHANGE.fat) });
     steps.push({ kind: "res", label: "residual", cho, pro, fat });
   }
