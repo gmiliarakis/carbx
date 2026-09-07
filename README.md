@@ -8,10 +8,11 @@ languages.
 ### [carbx.gmiliarakis.com](https://carbx.gmiliarakis.com)
 
 ![An oat drink entered into CarbX. It is counted as 1 starch and 1.5 fat
-exchanges, with the reason given as "it is a plant drink, which the exchange
-list counts on the carbohydrate it carries rather than as a milk exchange". The
-kidney diet switch is on, so the ingredient scan has flagged the dipotassium
-phosphate in it as an additive phosphate source.](docs/carbx.png)
+exchanges, with the reason given as "it is a plant-based food; the US exchange
+list relies on its carbohydrates rather than its milk-resembling
+characteristics". The kidney diet switch is on, so the ingredient scan has
+flagged the dipotassium phosphate in it as an additive phosphate
+source.](docs/carbx.png)
 
 ✅ no account needed\
 ✅ no backend\

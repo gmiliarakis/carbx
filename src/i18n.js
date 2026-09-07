@@ -8,10 +8,9 @@ export const LANGS = [
 const en = {
   understood: "Understood",
   notice:
-    "CarbX converts foods that are not on the printed exchange lists into exchange " +
-    "groups, for people managing their own diet and for the dietitians working with " +
-    "them. It is not a medical device, it does not calculate insulin doses, and it does " +
-    "not replace assessment by a dietitian. Check the parsed values against the pack.",
+    "CarbX calculates exchanges for food not included in exchange lists. It was designed for people managing " +
+    "their diet and for dietitians. It is not a medical device, it does not calculate insulin doses, " +
+    "and it does not replace assessment by a dietitian. Check the parsed values against the pack.",
 
   source: "Source",
   manual: "Manual",
@@ -51,22 +50,18 @@ const en = {
   food: "Food",
   foodPlaceholder: "description",
   per100: "Per 100 g or 100 mL, straight off the pack.",
-  carbsG: "Carbs g",
-  proteinG: "Protein g",
-  fatG: "Fat g",
-  fibreG: "Fibre g",
-  sugarsG: "Sugars g",
-  satFatG: "Sat fat g",
-  saltG: "Salt g",
+  carbs: "Carbs",
+  protein: "Protein",
+  fat: "Fat",
+  satFat: "Sat fat",
+  salt: "Salt",
   calories: "Calories",
-  potassiumMg: "Potassium mg",
-  phosphorusMg: "Phosphorus mg",
   ingredients: "Ingredients list",
   ingredientsPlaceholder: "paste for the additive scan",
   clear: "Clear",
 
   basis: "Basis",
-  portionG: "Portion g",
+  portion: "Portion",
   carbsPerExchange: "Carbs per exchange",
   unit15: "15 g (US)",
   unit10: "10 g (NL)",
@@ -217,8 +212,8 @@ const el = {
   understood: "Το κατάλαβα",
   notice:
     "Το CarbX μετατρέπει τρόφιμα που δεν υπάρχουν στους πίνακες ισοδυνάμων σε " +
-    "ισοδύναμα, για όσους διαχειρίζονται την διατροφή τους και για διαιτολόγους." +
-    "Δεν είναι ιατροτεχνολογικό προϊόν, δεν υπολογίζει δόσεις ινσουλίνης" +
+    "ισοδύναμα, για όσους διαχειρίζονται την διατροφή τους και για διαιτολόγους. " +
+    "Δεν είναι ιατροτεχνολογικό προϊόν, δεν υπολογίζει δόσεις ινσουλίνης και " +
     "δεν αντικαθιστά την εκτίμηση από διαιτολόγο. Ελέγξτε τις τιμές που " +
     "αναγνωρίστηκαν με τη συσκευασία.",
 
@@ -260,22 +255,18 @@ const el = {
   food: "Τρόφιμο",
   foodPlaceholder: "περιγραφή",
   per100: "Ανά 100 g ή 100 mL, όπως αναγράφεται στη συσκευασία.",
-  carbsG: "Υδατάνθρακες g",
-  proteinG: "Πρωτεΐνη g",
-  fatG: "Λιπαρά g",
-  fibreG: "Φυτικές ίνες g",
-  sugarsG: "Σάκχαρα g",
-  satFatG: "Κορεσμένα g",
-  saltG: "Αλάτι g",
+  carbs: "Υδατάνθρακες",
+  protein: "Πρωτεΐνη",
+  fat: "Λιπαρά",
+  satFat: "Κορεσμένα",
+  salt: "Αλάτι",
   calories: "Θερμίδες",
-  potassiumMg: "Κάλιο mg",
-  phosphorusMg: "Φώσφορος mg",
   ingredients: "Λίστα συστατικών",
   ingredientsPlaceholder: "επικολλήστε για τον έλεγχο προσθέτων",
   clear: "Καθαρισμός",
 
   basis: "Βάση υπολογισμού",
-  portionG: "Μερίδα g",
+  portion: "Μερίδα",
   carbsPerExchange: "Υδατάνθρακες ανά ισοδύναμο",
   unit15: "15 g (ΗΠΑ)",
   unit10: "10 g (Ολλανδία)",

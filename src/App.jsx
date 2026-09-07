@@ -28,7 +28,7 @@ const CSS = `
 .of-root *{box-sizing:border-box}
 .of-head{display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
   padding:18px 22px 14px; background:var(--bar); color:var(--sheet)}
-.of-langs{display:flex; gap:10px; align-items:baseline}
+.of-langs{display:flex; gap:10px; align-items:baseline; margin-left:auto}
 .of-langs button{background:none; border:0; padding:0; cursor:pointer;
   font-family:var(--sans); font-size:13px; color:#9AA0A6}
 .of-langs button:hover{color:var(--sheet)}
@@ -52,6 +52,11 @@ const CSS = `
 .of-in::placeholder,.of-ta::placeholder{color:#A4A8A2}
 .of-row{display:flex; gap:8px; margin-bottom:8px}
 .of-f{flex:1; min-width:0}
+/* The unit belongs to the value, not to the field name, so it sits against the
+   box. That also lets the box be only as wide as the few digits it holds. */
+.of-num{display:flex; align-items:center; gap:6px}
+.of-num .of-in{flex:0 1 66px; width:auto; min-width:0}
+.of-unit{font-size:12.5px; color:var(--muted); white-space:nowrap}
 .of-btn{width:100%; background:var(--signal); color:#fff; border:1px solid var(--signal); border-radius:2px; padding:9px;
   font-family:var(--sans); font-size:12.5px; letter-spacing:.005em; font-weight:500; cursor:pointer; margin-top:9px}
 .of-btn.ghost{background:var(--field); border-color:var(--line); color:var(--muted)}
@@ -173,6 +178,16 @@ function Help({ label, children }) {
       {open && <span className="pop" role="tooltip">{children}</span>}
     </span>);
 }
+function NumField({ label, unit, value, onChange }) {
+  return (
+    <div className="of-f">
+      <span className="of-lab">{label}</span>
+      <div className="of-num">
+        <input className="of-in" value={value} inputMode="decimal" onChange={onChange} />
+        <span className="of-unit">{unit}</span>
+      </div>
+    </div>);
+}
 function Line({ flag = "", name, sub, value, unit }) {
   const c = flag === "a" ? "var(--alert)" : flag === "w" ? "var(--warn)" : "var(--ink)";
   return (<div className="of-line">
@@ -248,6 +263,7 @@ export default function ExchangeLookup() {
   const [renal, setRenal] = useState(false);
   const [lang, setLang] = useState(initialLang);
   const t = translator(lang);
+  const reason = (key) => t("r_" + key).replace(/[.·]+\s*$/, "");
   const pickLang = (id) => {
     setLang(id);
     try { window.localStorage.setItem(LANG_KEY, id); } catch { /* storage unavailable */ }
@@ -456,25 +472,21 @@ export default function ExchangeLookup() {
                      placeholder={t("foodPlaceholder")} />
               <p className="of-hint">{t("per100")}</p>
               <div className="of-row" style={{ marginTop: 8 }}>
-                {[["cho", t("carbsG")], ["pro", t("proteinG")], ["fat", t("fatG")]].map(([k, l]) => (
-                  <div className="of-f" key={k}><span className="of-lab">{l}</span>
-                    <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
+                {[["cho", t("carbs"), "g"], ["pro", t("protein"), "g"], ["fat", t("fat"), "g"]].map(([k, l, u]) => (
+                  <NumField key={k} label={l} unit={u} value={rec[k]} onChange={(e) => set(k, e.target.value)} />))}
               </div>
               {detail && (<>
                 <div className="of-row">
-                  {[["fibre", t("fibreG")], ["sugars", t("sugarsG")], ["sfa", t("satFatG")]].map(([k, l]) => (
-                    <div className="of-f" key={k}><span className="of-lab">{l}</span>
-                      <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
+                  {[["fibre", t("fibre"), "g"], ["sugars", t("sugars"), "g"], ["sfa", t("satFat"), "g"]].map(([k, l, u]) => (
+                    <NumField key={k} label={l} unit={u} value={rec[k]} onChange={(e) => set(k, e.target.value)} />))}
                 </div>
                 <div className="of-row">
-                  {[["salt", t("saltG")], ["kcal", t("calories")]].map(([k, l]) => (
-                    <div className="of-f" key={k}><span className="of-lab">{l}</span>
-                      <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
+                  {[["salt", t("salt"), "g"], ["kcal", t("calories"), "kcal"]].map(([k, l, u]) => (
+                    <NumField key={k} label={l} unit={u} value={rec[k]} onChange={(e) => set(k, e.target.value)} />))}
                 </div>
                 <div className="of-row">
-                  {[["k", t("potassiumMg")], ["p", t("phosphorusMg")]].map(([k, l]) => (
-                    <div className="of-f" key={k}><span className="of-lab">{l}</span>
-                      <input className="of-in" value={rec[k]} inputMode="decimal" onChange={(e) => set(k, e.target.value)} /></div>))}
+                  {[["k", t("potassium"), "mg"], ["p", t("phosphorus"), "mg"]].map(([k, l, u]) => (
+                    <NumField key={k} label={l} unit={u} value={rec[k]} onChange={(e) => set(k, e.target.value)} />))}
                 </div>
                 <span className="of-lab" style={{ marginTop: 6 }}>{t("ingredients")}</span>
                 <textarea className="of-ta" rows={3} value={rec.ing} onChange={(e) => set("ing", e.target.value)}
@@ -489,8 +501,8 @@ export default function ExchangeLookup() {
           <div className="of-sect">
             <div className="of-legend">{t("basis")}</div>
             <div className="of-row">
-              <div className="of-f"><span className="of-lab">{t("portionG")}</span>
-                <input className="of-in" value={portion} inputMode="decimal" onChange={(e) => setPortion(e.target.value)} /></div>
+              <NumField label={t("portion")} unit="g" value={portion}
+                onChange={(e) => setPortion(e.target.value)} />
               {!detail && <div className="of-f" />}
               {detail && (
                 <div className="of-f"><span className="of-lab">{t("carbsPerExchange")}</span>
@@ -562,7 +574,7 @@ export default function ExchangeLookup() {
               <i>{override ? t("viaSet") : view.why.via === "name" ? t("viaName")
                 : view.why.via === "composition" ? t("viaFigures") : t("viaDefault")}</i>
               {t("countedAs")} <b>{t("g_" + view.gid)}</b>
-              {override ? "." : `, ${t("because")} ${t("r_" + view.why.key)}.`}
+              {override ? "." : `, ${t("because")} ${reason(view.why.key)}.`}
               {!override && view.why.via === "default" && ` ${t("setYourself")}`}
             </div>
             <div style={{ marginTop: 16 }}>{cards}</div>
@@ -581,10 +593,10 @@ export default function ExchangeLookup() {
             <div className="of-why">
               <i>{override ? t("viaSet") : view.why.via === "name" ? t("viaName")
                 : view.why.via === "composition" ? t("viaFigures") : t("viaDefault")}</i>
-              Counted as <b>{GLABEL[view.gid]}</b>
+              {t("countedAs")} <b>{t("g_" + view.gid)}</b>
               {override
-                ? `, ${t("setByHand")} ${t("g_" + view.auto)}, ${t("because")} ${t("r_" + view.why.key)}.`
-                : `, ${t("because")} ${t("r_" + view.why.key)}.`}
+                ? `, ${t("setByHand")} ${t("g_" + view.auto)}, ${t("because")} ${reason(view.why.key)}.`
+                : `, ${t("because")} ${reason(view.why.key)}.`}
             </div>
 
             <div style={{ marginTop: 16 }}>{cards}</div>

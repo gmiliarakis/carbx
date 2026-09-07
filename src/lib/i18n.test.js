@@ -149,3 +149,19 @@ describe("the Greek interface and the Greek keyword lists agree", () => {
     expect(KEYWORDS.protein.any).toContain("χαλούμι");
   });
 });
+
+describe("classification reasons are sentence fragments", () => {
+  // The interface writes "Counted as Starch, because <reason>." and supplies
+  // the full stop, so a reason carrying its own produced "..". App.jsx strips a
+  // trailing stop defensively; this keeps the dictionary tidy as well.
+  it("does not start with a capital or read as a standalone sentence", () => {
+    const shouty = [];
+    for (const id of LANG_IDS) {
+      for (const [k, v] of Object.entries(STRINGS[id])) {
+        if (!k.startsWith("r_")) continue;
+        if (v[0] !== v[0].toLowerCase()) shouty.push(`${id}: ${k} starts with a capital`);
+      }
+    }
+    expect(shouty).toEqual([]);
+  });
+});
