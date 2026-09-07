@@ -18,7 +18,7 @@ const CSS = `
   /* --sans and --mono are declared on :root in index.css, so the document
      paints in them before the app mounts. Self-hosted; see src/fonts.css. */
   --display:var(--sans);
-  --lab-fam:var(--sans); --lab-case:none; --lab-sp:.005em; --lab-size:11.5px; --lab-w:500;
+  --lab-fam:var(--sans); --lab-case:none; --lab-sp:.005em; --lab-size:13.5px; --lab-w:600;
   background:var(--sheet); color:var(--ink);
   font-family:var(--sans); font-size:15px; line-height:1.5;
   min-height:100vh; display:flex; flex-direction:column;
@@ -37,7 +37,7 @@ const CSS = `
 .of-sect{margin-bottom:22px}
 .of-lab{display:block; font-family:var(--lab-fam); font-size:var(--lab-size);
   letter-spacing:var(--lab-sp); text-transform:var(--lab-case); font-weight:var(--lab-w);
-  color:var(--muted); margin-bottom:4px}
+  color:var(--ink); margin-bottom:5px}
 .of-in,.of-sel,.of-ta{width:100%; background:var(--field); color:var(--ink); border:1px solid var(--line);
   border-radius:2px; padding:8px 9px; font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums}
 .of-ta{resize:vertical; line-height:1.5; font-size:12px}
@@ -81,17 +81,6 @@ const CSS = `
   text-transform:var(--lab-case); font-weight:600;
   color:var(--muted); border-bottom:1px solid var(--rule); padding-bottom:6px; margin-bottom:6px}
 
-.of-ledger{width:100%; border-collapse:collapse; font-family:var(--mono); font-variant-numeric:tabular-nums}
-.of-ledger th{font-family:var(--lab-fam); font-size:var(--lab-size); letter-spacing:var(--lab-sp);
-  text-transform:var(--lab-case); color:var(--muted);
-  text-align:right; padding:5px 7px; border-bottom:1px solid var(--rule); font-weight:600}
-.of-ledger th:first-child{text-align:left}
-.of-ledger td{font-size:13.5px; padding:8px 7px; text-align:right; border-bottom:1px solid var(--rule2)}
-.of-ledger td:first-child{text-align:left; font-family:var(--sans)}
-.of-ledger tr[data-kind="draw"] td{color:var(--ink); font-weight:600}
-.of-ledger tr[data-kind="res"] td{color:var(--muted); font-style:italic}
-.of-ledger tr[data-kind="tot"] td{border-top:2px solid var(--ink); border-bottom:0; font-weight:700; font-size:13.5px; padding-top:9px}
-
 .of-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:1px;
   background:var(--rule); border:1px solid var(--rule)}
 .of-card{background:var(--sheet); padding:10px 11px}
@@ -108,15 +97,16 @@ const CSS = `
 .of-vl u{text-decoration:none; color:var(--muted); font-size:10.5px; margin-left:3px}
 .of-note{display:grid; grid-template-columns:14px 1fr; gap:10px; padding:10px 11px; margin:7px 0;
   border-left:2px solid; font-size:13.5px; line-height:1.5}
-.of-note b{font-family:var(--mono); font-size:12px}
+.of-note b{font-weight:600}
 .of-note.w{background:var(--warn-w); border-color:var(--warn); color:#5C3705}
 .of-note.a{background:var(--alert-w); border-color:var(--alert); color:#5E1310}
 .of-note.i{background:var(--signal-w); border-color:var(--ink); color:#2B2F33}
 .of-hit{font-family:var(--mono); font-size:11.5px; display:inline-block; padding:2px 6px; margin:2px 4px 2px 0;
   border:1px solid currentColor; border-radius:2px}
-.of-method{margin-top:24px; padding-top:12px; border-top:1px solid var(--rule);
-  font-family:var(--sans); font-size:12.5px; color:var(--muted); line-height:1.65}
-.of-method b{color:var(--ink); font-weight:600}
+.of-src{margin-top:26px; padding-top:14px; border-top:1px solid var(--rule);
+  font-size:12.5px; color:var(--muted); line-height:1.6}
+.of-src a{color:var(--ink); text-decoration:underline; text-underline-offset:2px}
+.of-src a:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
 .of-empty{color:var(--muted); font-size:14.5px; margin-top:22px; max-width:56ch; line-height:1.6}
 .of-foot{margin-top:auto; padding-top:22px; text-align:right; font-family:var(--sans);
   font-size:11.5px; color:var(--muted)}
@@ -228,6 +218,7 @@ export default function ExchangeLookup() {
   const [override, setOverride] = useState("");
   const [ocrLang, setOcrLang] = useState("eng+nld+deu+fra+ell");
   const [detail, setDetail] = useState(false);
+  const [full, setFull] = useState(false);
   // Shown once per browser. Storage can throw or be empty, so failing to read
   // it shows the notice rather than hiding it.
   const [useNotice, setUseNotice] = useState(() => {
@@ -506,28 +497,37 @@ export default function ExchangeLookup() {
               <span aria-hidden="true">{detail ? "\u2212" : "+"}</span>
               {detail ? "Fewer options" : "More options"}
             </button>
-            <p className="of-hint">{detail
-              ? "Every field, the food group, the carbs-per-exchange convention, and the full working."
-              : "The rest of the label, the food group, and the full working."}</p>
+            <p className="of-hint">The rest of the label, the food group, and the
+              exchange convention.</p>
+          </div>
+
+          <div className="of-sect">
+            <div className="of-legend">View</div>
+            <div className="of-seg">
+              <button data-on={!full ? 1 : 0} onClick={() => setFull(false)}>Simple</button>
+              <button data-on={full ? 1 : 0} onClick={() => setFull(true)}>Detail</button>
+            </div>
+            <p className="of-hint">Simple gives the exchanges and anything flagged. Detail adds
+              every value behind those flags and the ingredient scan.</p>
           </div>
         </div>
 
         {/* sheet */}
         <div className="of-sheet">
           <div className="of-shead">
-            <h2>{detail ? "Working" : "Exchanges"}</h2>
+            <h2>{full ? "Detail" : "Exchanges"}</h2>
             {view && <span className="of-stamp">{r0(size)} g portion · {unit} g carbs per exchange</span>}
           </div>
 
           {!view && (
             <p className="of-empty">
-              {detail
-                ? "Enter a food to see the working behind its exchanges, and every value behind the flags. Paste an ingredients list too, it also scans for phosphate and potassium additives."
+              {full
+                ? "Enter a food to see every value behind its flags. Paste an ingredients list too, it also scans for phosphate and potassium additives."
                 : "Enter a food to see how many exchanges the portion holds, and anything worth knowing about it."}
             </p>
           )}
 
-          {view && !detail && (<>
+          {view && !full && (<>
             <div className="of-pname">{rec.name || "Unnamed food"}</div>
             <div className="of-pbrand">{r0(size)} g portion</div>
             <div className="of-why">
@@ -546,7 +546,7 @@ export default function ExchangeLookup() {
             </div>
           </>)}
 
-          {view && detail && (<>
+          {view && full && (<>
             <div className="of-pname">{rec.name || "Unnamed food"}</div>
             <div className="of-pbrand">
               {parsed ? "transcribed, check against pack" : "entered by hand"}
@@ -560,59 +560,38 @@ export default function ExchangeLookup() {
                 : `, because ${view.why.rule}.`}
             </div>
 
-            <div className="of-block">
-              <div className="of-btitle">Ledger</div>
-              <table className="of-ledger">
-                <thead><tr><th>Step</th><th>Carbs g</th><th>Protein g</th><th>Fat g</th></tr></thead>
-                <tbody>
-                  {view.dec.steps.map((s, i) => (
-                    <tr key={i} data-kind={s.kind}>
-                      <td>{s.label}</td>
-                      <td>{s.kind === "draw" && !s.cho ? "0" : r1(s.cho)}</td>
-                      <td>{s.kind === "draw" && !s.pro ? "0" : r1(s.pro)}</td>
-                      <td>{s.kind === "draw" && !s.fat ? "0" : r1(s.fat)}</td>
-                    </tr>))}
-                  <tr data-kind="tot"><td>Rebuilt from rounded exchanges</td>
-                    <td>{r1(view.dec.rc)}</td><td>{r1(view.dec.rp)}</td><td>{r1(view.dec.rf)}</td></tr>
-                </tbody>
-              </table>
+            <div style={{ marginTop: 16 }}>{cards}</div>
 
-              <div style={{ marginTop: 14 }}>{cards}</div>
-
-              <div style={{ marginTop: 12 }}>
-                <Line flag={Math.abs(view.drift) > 10 ? "w" : ""} name="Reconciliation"
-                      sub={`${r0(view.pp.kcal)} calories declared, ${r0(view.rkcal)} rebuilt from the rounded exchanges`}
-                      value={`${view.drift >= 0 ? "+" : ""}${r1(view.drift)}`} unit="%" />
-              </div>
-              {Math.abs(view.drift) > 10 && (
-                <Note kind="w" title="Drift above 10%">
+            {Math.abs(view.drift) > 10 && (
+              <div className="of-block">
+                <Note kind="w" title="Counts are rough for this portion">
                   Rounding to half exchanges has cost more than a tenth of the energy.
                   {view.pp.cho >= 5
-                    ? " For a food eaten in quantity, count it in grams of carbohydrate instead of exchanges."
-                    : " This portion carries almost no carbohydrate, so the drift is in the protein and fat exchanges" +
-                      " rather than the carbohydrate. Half an exchange is a coarse unit on a portion this small;" +
-                      " weigh the food rather than reading the count as exact."}
-                </Note>)}
-            </div>
+                    ? " For a food eaten in quantity, count it in grams of carbohydrate instead."
+                    : " This portion carries almost no carbohydrate, so it is the protein and fat that round" +
+                      " badly. Half an exchange is a coarse unit on a portion this small."}
+                </Note>
+              </div>)}
 
             <div className="of-block">
-              <div className="of-btitle">Per portion, condition flags</div>
+              <div className="of-btitle">Per portion</div>
               <Line flag={view.na > 500 ? "a" : view.na > 250 ? "w" : ""} name="Sodium"
                     sub={`${r1(view.pp.salt)} g salt · daily ceiling 2000 mg`} value={r0(view.na)} unit="mg" />
               <Line flag={view.pp.sugars > 15 ? "w" : ""} name="Sugars"
                     sub="total, not free sugars" value={r1(view.pp.sugars)} unit="g" />
               <Line flag={view.pp.fibre != null && view.pp.cho >= 8 && view.pp.fibre < 3 ? "w" : ""} name="Fibre"
                     sub={view.pp.fibre == null ? "not stated, treat as unknown"
-                      : `${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g per 1000 kcal · target ≥ 14`}
+                      : `${r1((view.pp.fibre / Math.max(view.pp.kcal, 1)) * 1000)} g per 1000 calories, aim for 14 or more`}
                     value={view.pp.fibre == null ? "n/s" : r1(view.pp.fibre)}
                     unit={view.pp.fibre == null ? "" : "g"} />
               <Line flag={view.pp.sfa > 5 ? "w" : ""} name="Saturated fat" value={r1(view.pp.sfa)} unit="g" />
               <Line flag={view.pp.k != null && view.pp.k > 200 ? "w" : ""} name="Potassium"
-                    sub={view.pp.k == null ? "not stated, treat as unknown" : "renal tiers: <100 low · 100-200 medium · >200 high"}
+                    sub={view.pp.k == null ? "not stated, treat as unknown"
+                      : "on a kidney diet: under 100 mg is low, 100 to 200 medium, above 200 high"}
                     value={view.pp.k == null ? "n/s" : r0(view.pp.k)} unit={view.pp.k == null ? "" : "mg"} />
               <Line flag={view.pp.p != null && view.pp.pro > 0 && view.pp.p / view.pp.pro > 12 ? "w" : ""} name="Phosphorus"
                     sub={view.pp.p == null ? "not mandatory in the EU or US, see additive scan below"
-                      : `${r1(view.pp.p / Math.max(view.pp.pro, 0.1))} mg per g protein · target < 12`}
+                      : `${r1(view.pp.p / Math.max(view.pp.pro, 0.1))} mg for every g of protein, aim below 12`}
                     value={view.pp.p == null ? "n/s" : r0(view.pp.p)} unit={view.pp.p == null ? "" : "mg"} />
             </div>
 
@@ -640,18 +619,12 @@ export default function ExchangeLookup() {
                 </Note>))}
             </div>
 
-            <div className="of-method">
-              <b>Method.</b> Carbohydrate group drawn first at {unit} g per exchange, its protein and fat netted off. Milk
-              carries the fat on the label, its variant named by fat per exchange (≤3 g fat-free, 4-7 g
-              reduced-fat, ≥8 g whole). Residual protein at 7 g per exchange
-              {proTiers ? ", tier named by fat per exchange (≤3 g lean, 4-7 g medium, ≥8 g high)" : ""},
-              carrying the fat on the label.
-              Residual fat at 5 g. The grams-per-exchange figures use this food's own composition, not the portion size.<br />
-              <b>Provenance.</b> Every figure comes from what you entered or transcribed. Label parsing extracts
-              text, it doesn't estimate.<br />
-              <b>Scan limits.</b> Matches E-numbers, and additive names in English, Dutch, German, French
-              and Greek. Anything worded outside those lists is not detected.
-            </div>
+            <p className="of-src">
+              Every figure here comes from what you entered. Nothing is estimated.{" "}
+              <a href="https://github.com/gmiliarakis/carbx#reference" target="_blank" rel="noreferrer">
+                How this is worked out
+              </a>
+            </p>
           </>)}
 
           <div className="of-foot">Check before use.</div>
