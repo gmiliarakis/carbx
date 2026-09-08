@@ -1,10 +1,9 @@
 # Validation
 
-CarbX's unit tests show the code does what it was told to do. They say nothing
-about whether the exchanges it produces are the right ones. This file is the
-other half: twenty real products, worked through against the exchange-list
-method as written down, with every disagreement recorded rather than resolved
-quietly.
+Unit tests establish that the code implements its specification. They do not
+establish that the specification produces the right exchanges. This file covers
+the second question: twenty real products run through the exchange-list method
+as documented, with every disagreement recorded rather than resolved quietly.
 
 **Source.** Open Food Facts, records retrieved 2026-09-06. Every label
 value in `products.json` is verbatim from the product record, including the

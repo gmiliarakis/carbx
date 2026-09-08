@@ -87,13 +87,13 @@ describe("plant drinks", () => {
   const at = (name, p) => inferGroupWithReason(p, name);
 
   it("counts a soy drink on its carbohydrate, not as a milk exchange", () => {
-    // The 2007 list's Dairy-Like Foods section: a cup of plain soy milk is
-    // "1 carbohydrate + 1 fat". Where it means a milk exchange it says so,
-    // as it does for chocolate milk ("1 fat-free milk + 1 carbohydrate").
+    // The 2019 Milk and Milk Substitutes list: a cup of plain soy drink is
+    // "1 carb + 1 fat". Where it means a milk choice it says so, as it does
+    // for chocolate milk ("1 fat-free milk + 1 carb").
     const r = at("Sojadrink ongezoet", { cho: 2.5, pro: 3.3, fat: 1.8, sugars: 0.5, fibre: 0.5 });
     expect(r.group).toBe("starch");
     expect(r.via).toBe("name");
-    expect(r.rule).toMatch(/plant dairy/);
+    expect(r.rule).toMatch(/plant-based/);
   });
 
   it("lets a soy drink's protein fall out as a protein exchange", () => {
@@ -112,7 +112,7 @@ describe("plant drinks", () => {
     const r = at("Oat drink, barista edition", { cho: 7.1, pro: 1.1, fat: 3, sugars: 3.4, fibre: 0.8 });
     expect(r.group).toBe("starch");
     expect(r.via).toBe("name");
-    expect(r.rule).toMatch(/plant dairy/);
+    expect(r.rule).toMatch(/plant-based/);
   });
 
   it.each([
@@ -128,12 +128,12 @@ describe("plant drinks", () => {
   it("does not lose a sweetened almond drink's carbohydrate to the nut list", () => {
     const r = at("Almond milk, sweetened", { cho: 3, pro: 0.4, fat: 1.1, sugars: 2.6, fibre: 0.3 });
     expect(r.group).toBe("starch");
-    expect(r.rule).toMatch(/plant dairy/);
+    expect(r.rule).toMatch(/plant-based/);
   });
 
   it("leaves an unsweetened almond drink to the composition rules", () => {
-    // Almost nothing in it. It reaches the fat list and rounds away to a free
-    // food, which is what it is.
+    // Too little carbohydrate for rule 1 and too little protein for rule 1b, so
+    // it reaches the composition rules and is counted on its fat alone.
     expect(inferGroup({ cho: 0.1, pro: 0.4, fat: 1.1, sugars: 0.1, fibre: 0.3 }, "Amandeldrink ongezoet"))
       .toBe("fat-only");
   });
@@ -154,7 +154,7 @@ describe("plant drinks", () => {
   });
 });
 
-describe("plant dairy beyond drinks", () => {
+describe("plant-based products beyond drinks", () => {
   it("counts a plain soy yoghurt as protein, not as a vegetable", () => {
     // 1 g of carbohydrate with 4 g of protein satisfies the vegetable rule,
     // which only asks for low carbohydrate and some protein alongside it. The

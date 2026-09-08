@@ -202,13 +202,9 @@ function plainFlags({ pp, na, scans }, renal, t) {
   else if (na > 250) out.push({ id: "na", cls: "w", text: t("flagSalty", { n: r0(na) }) });
   if (pp.sugars > 15) out.push({ id: "sug", cls: "w", text: t("flagSugar", { n: r1(pp.sugars) }) });
   if (pp.sfa > 5) out.push({ id: "sfa", cls: "w", text: t("flagSatFat", { n: r1(pp.sfa) }) });
-  // Only worth saying on a food that carries carbohydrate, and only when the
-  // label actually declared fibre. Blank is unknown, not zero: flagging olive
-  // oil and chicken as low in fibre is noise that costs the real flags their
-  // weight. Half a starch exchange is the floor for calling a food a
-  // carbohydrate food at all.
-  if (pp.fibre != null && pp.cho >= 8 && pp.fibre < 3)
-    out.push({ id: "fib", cls: "w", text: t("flagFibre", { n: r1(pp.fibre), c: r1(pp.cho) }) });
+  // Fibre is deliberately absent here. Low fibre is a diet-quality remark
+  // rather than something to act on in the moment, and the simple view is for
+  // what changes a decision. The detail view still reports and flags it.
   if (renal && pp.k != null && pp.k > 200)
     out.push({ id: "k", cls: "w", text: t("flagPotassium", { n: r0(pp.k) }) });
   if (renal && pp.p != null && pp.pro > 0 && pp.p / pp.pro > 12)

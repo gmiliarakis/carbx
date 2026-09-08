@@ -1,16 +1,15 @@
 # CarbX
 
-Exchange-list calculator for the foods the printed lists do not cover. Enter a
-nutrition label and CarbX works out which food group it belongs to and how many
-exchanges the portion holds, for diabetes, kidney and weight loss diets, in five
-languages.
+Food exchange calculator for the foods omitted in the exchange lists.
+CarbX determines the food group and the number of exchanges in the
+portion, for diabetes mellitus, chronic kidney disease and weight loss diets.
 
 ### [carbx.gmiliarakis.com](https://carbx.gmiliarakis.com)
 
 ![An oat drink entered into CarbX. It is counted as 1 starch and 1.5 fat
 exchanges, with the reason given as "it is a plant-based food; the US exchange
 list relies on its carbohydrates rather than its milk-resembling
-characteristics". The kidney diet switch is on, so the ingredient scan has
+characteristics". The CKD diet switch is on, so the ingredient scan has
 flagged the dipotassium phosphate in it as an additive phosphate
 source.](docs/carbx.png)
 
@@ -20,98 +19,140 @@ source.](docs/carbx.png)
 ✅ no data stored\
 ✅ no analytics
 
-## What this is, and what it is not
+- **Rules, not AI.** Every group and every exchange comes from a published
+  exchange list and a rule written out in the source. Nothing is inferred by a
+  model, and every result names the rule that produced it.
+- **Five label languages.** Labels typed, pasted or photographed are read in
+  English, Dutch, German, French and Greek. The additive scan matches additive
+  names in all five.
+- **Two interface languages.** English and Greek.
+- **Two carbohydrate conventions, one button.** 15 g of carbohydrate per
+  exchange for the US convention, 10 g for the Dutch koolhydraateenheid. The
+  switch redefines the carbohydrate unit and nothing else, so a food keeps its
+  group, its protein and fat exchanges and its flags either way.
+- **Kidney diet flags.** One switch adds potassium and phosphorus, reports
+  phosphorus per gram of protein, and scans the ingredients for phosphate and
+  potassium additives. Off by default, so it stays out of the way of everyone
+  else.
+- **Simple or detailed view.** Simple gives the exchanges and anything flagged.
+  Detail adds every value behind those flags and the ingredient scan.
+- **Light and fast.** A static site with no backend. Results are instant and
+  photo recognition runs on your own device.
+- **Free and open source.** MIT licensed.
 
-CarbX is a teaching and self-management aid. It converts a nutrition
-declaration into exchanges and flags what a diabetes or kidney diet watches.
+## Contents
+
+[Intended use](#intended-use) ·
+[Usage](#usage) ·
+[Terms](#terms) ·
+[Reasoning](#reasoning) ·
+[Classification](#classification) ·
+[Label parser](#label-parser) ·
+[Additive scan](#additive-scan) ·
+[Flags](#flags) ·
+[Limitations](#limitations) ·
+[Validation](#validation) ·
+[Sources](#sources) ·
+[Development](#development) ·
+[References](#references)
+
+Read the first three sections to use CarbX. The rest documents how it decides
+what it decides, and why, so a dietitian can check it or disagree with it.
+
+## Intended use
+
+CarbX is a teaching and self-management tool. It converts a nutrition declaration
+into exchanges and flags monitored in diabetes mellitus (DM) and chronic kidney disease (CKD).
 
 It is not a medical device. It does not calculate insulin doses. It does not
-replace assessment by a dietitian, and it holds no clinical
-context: it knows nothing about the person eating the food, their renal
-function, their insulin regimen or their targets. Every figure it shows is
-derived from the label you gave it, so a mistyped or misread label produces a
-confident wrong answer. Check parsed values against the pack before acting on
-them.
+replace assessment by a dietitian. It knows no clinical context for the person
+eating the food.
 
+Every figure it displays derives from the label submitted. A mistyped or misread
+label therefore yields a confident wrong calculation. Verify the parsed values against
+the pack before acting on them.
 
 ## Usage
 
-**1. Insert the nutritional values in four ways:**
+**1. Insert the nutritional values.**
 
-i. **Manually**\
-ii. **Paste the text** copied off a pack, a website or a
-database entry in English, Dutch, German,
-French and Greek.\
-iii. **Read from photo** with local OCR\
-iv. **Search Open Food Facts.** Look up by name in Dutch, Greek, Belgian, German and French databases.
+i. **By hand.**\
+ii. **Paste the text** from a pack, a website or a database entry, in English,
+Dutch, German, French or Greek.\
+iii. **Take photo of the label.** Recognition is local to your device.\
+iv. **Search Open Food Facts** by name, across the world, Dutch, Greek, Belgian,
+German and French databases.
 
-**2. Set the portion size and convention.** Portion in grams, and 15 g or 10 g of carbohydrate per exchange.
+**2. Portion and convention.** Portion in grams, and the carbohydrate unit: 15 g
+per exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
 
-**3. Read output**
-   - exchanges per portion
-   - grams of this food per exchange
-   - flags on sodium, sugars, fibre, saturated fat, potassium and phosphorus, and on rounding drift
+**3. Output**
 
-Macronutrients (carbohydrate, protein and fat) are the only required fields. Paste the ingredients list to scan for phosphate, potassium, sodium and sugar additives.
+  - exchanges in the portion
+  - grams of food per exchange
+  - flags on sodium, sugars, fibre, saturated fat, potassium and phosphorus, and
+    on rounding drift
 
-Each result says which group it was counted as and whether the name or the figures decided it. The assigned group can always be overridden. Where rounding to half exchanges costs more than a tenth of the energy, the portion is flagged as rough.
+Carbohydrate, protein and fat are the only required fields. If you provide the ingredients
+list as well, CarbX scans it for phosphate, potassium, sodium and sugar
+additives.
 
-## Terminology
+Every result names the group the food was counted from and states whether its name
+or its figures determined that. The group is always overridable. Where rounding to
+half exchanges costs more than a tenth of the energy, the portion is marked as
+approximate.
+
+## Terms
 
 **Food group** is the list a food is counted from: starch, fruit, milk,
-non-starchy vegetables, sweets and other carbohydrates, protein, fat.
-**Exchange** is the countable unit drawn from it: "1.5 milk exchanges, 300 g
-each".
+non-starchy vegetables, sweets and other carbohydrates, protein, fat.\
+**Exchange** is the countable unit drawn from that list. A result reads "1.5 milk
+exchanges, 300 g each".\
+**CHO** is the standard clinical shorthand for carbohydrate. The letters are the elements it contains: carbon, hydrogen and oxygen.
 
-Two synonyms are worth knowing, because the sources use them. The 2007 list
-counts in "1 carbohydrate, 1 fat" in its tables but says *choice* in its prose
-("1 fruit choice is equivalent to", "1 milk choice contains", "add an extra fat
-choice"), and later editions dropped "exchange" from the title altogether.
-Greek clinical practice says *ισοδύναμα*, literally "equivalents" rather than
-"exchanges": English named the unit after swapping foods between lists, Greek
-after their equal value. A Greek interface should use ισοδύναμα and never a
-calque such as *ανταλλαγές*.
+## Reasoning
 
-## Reference
+The US reference system is implemented. Only the carbohydrate column scales, by `unit / 15`, so a single table serves both conventions.
 
-The table is the US reference, scaled by `unit / 15` to serve all three conventions.
+| Group                  | Carbohydrate g | Protein g | Fat g |
+| ---------------------- | ----- | --------- | ----- |
+| Starch                 | 15    | 3         | 1     |
+| Fruit                  | 15    | 0         | 0     |
+| Milk                   | 12    | 8         | 0     |
+| Non-starchy veg        | 5     | 2         | 0     |
+| Sweets and other carbs | 15    | 0         | 0     |
 
-| Group              | CHO g | Protein g | Fat g |
-| ------------------ | ----- | --------- | ----- |
-| Starch             | 15    | 3         | 1     |
-| Fruit              | 15    | 0         | 0     |
-| Milk               | 12    | 8         | 0     |
-| Non-starchy veg    | 5     | 2         | 0     |
-| Sweets and other carbs | 15 | 0 | 0 |
+`decompose()` proceeds in two stages, the second operating on the residue of the
+first.
 
-A protein exchange is 7 g of protein. The fat alongside it sets the tier: up to 3 g is lean (2 g fat), above 3 up to 7 is medium (5 g), above 7 is high (8 g). A
-fat exchange is 5 g.
+1. **Carbohydrate.** Above 0.4 g, the function draws `cho / group.cho` exchanges
+   and consumes the carbohydrate exactly. The group's protein and fat are deducted
+   as well, limited to the quantities the food actually contains.
+   `protein-only` and `fat-only` are classifications rather than rows in the
+   table, so their carbohydrate is excluded here and never becomes an exchange.
+   The protein stage is also skipped for `fat-only` and `sweet`, since the list
+   records both as carbohydrate or fat and never as protein. Without that
+   exception, a chocolate bar's few grams of protein would become a protein
+   exchange and absorb the bar's fat along with them.
+2. **Protein, then fat.** Above 1.2 g of residual protein, `protein / 7` exchanges
+   at the tier its residual fat implies. Above 1.2 g of residual fat, `fat / 5`.
 
-`decompose()` runs two stages, the second on the residual the first left:
-
-1. **Carbohydrate.** If >0.4 g available, draws `cho / group.cho` exchanges, consuming the carbohydrate exactly. The group's protein and fat net off too, capped at what the food holds. `protein-only` and `fat-only` are classifications rather than table entries, so their carbohydrate is skipped here and never enters an exchange. The protein stage is skipped for `fat-only` and for `sweet`: the exchange list writes both as carbohydrate or fat and never as protein, so a chocolate bar's few grams of protein must not become a protein exchange and absorb the food's fat with it.
-2. **Protein, then fat.** Above 1.2 g residual protein, `protein / 7` exchanges at the tier its residual fat implies. Above 1.2 g residual fat, `fat / 5`.
-
-Counts are computed unrounded, then rounded to the nearest half, ties up.
-Anything rounding to 0 is dropped. `gramsPerExchange()` inverts one exchange
-against the food's per-100 g composition, independent of portion, and returns
-null when the food has none of that macro.
+Counts are computed unrounded, then rounded to the nearest half, ties upward.
+Anything that rounds to zero is discarded. `gramsPerExchange()` inverts one
+exchange against the food's composition per 100 g, independent of the portion, and
+returns null where the food contains none of that macronutrient.
 
 ## Classification
 
-`inferGroupWithReason()` returns the group together with how it reached it:
-`name` when a keyword settled it, `composition` when the figures did, `default`
-when neither matched. The app shows this, so a reader can see which of the two
-produced the answer. `inferGroup()` returns the group alone.
+The food is classified based on a set of rules (see table below).
+`inferGroupWithReason()` returns the group together with the route to it: `name`
+where a keyword decided it, `composition` where the figures did, `default` where
+neither matched. The interface displays this, so a reader can see the reasoning behind the decision. `inferGroup()` returns the group without explanation.
 
-A name is never trusted on its own. Each keyword branch carries a composition
-gate, because a food word is often a flavour: apple pie, banana bread, milk
-chocolate, olive bread.
-
-| # | Test | Result |
+| # | Rule | Decision |
 | - | ---- | ------ |
-| 1 | plant-dairy keyword, CHO at least 2 g | `starch` |
-| 1b | plant-dairy keyword, CHO under 2 g, protein at least 2 g | `protein-only` |
+| 1 | plant-based keyword, CHO at least 2 g | `starch` |
+| 1b | plant-based keyword, CHO under 2 g, protein at least 2 g | `protein-only` |
 | 2 | fat keyword, and either fat leads 60% of the energy or CHO and protein are both under 5 g | `fat-only` |
 | 3 | dairy keyword, protein standing in a milk-like ratio to the carbohydrate, and either both above 2 g or the portion carrying a full milk exchange of protein | `milk` |
 | 4 | protein, fruit, vegetable, sweets and starch keywords, ranked by longest match, each with its own gate | the first whose gate passes |
@@ -125,92 +166,77 @@ chocolate, olive bread.
 | 12 | CHO 8 to 35 g, fat under 3 g, fibre at least 0.3 g, sugars at least 45% of CHO, almost no protein | `fruit` |
 |  | nothing matched | `starch` |
 
-Rule 12 catches fruit named in a language the keyword list does not cover. The
-fibre floor keeps sugary drinks and honey out. Dried fruit exceeds the upper
-bound and depends on the name list.
-
 Rule 6 exists because of imitation cheeses: coconut oil and starch, no protein
-at all, under a name that reads as dairy. Without it they reached the starch
-default. Rule 4's ranking by longest keyword is what makes "aardappel" beat
-"appel", "buttermilk" beat "butter" and "green bean" beat "bean".
+whatever, under a name that reads as dairy. Without it they reached the starch
+default. Rule 4's ranking by longest keyword is what allows "aardappel" to beat
+"appel", "buttermilk" to beat "butter" and "green bean" to beat "bean".
+
+Rule 12 captures fruit named in a language the keyword list does not cover. The
+fibre floor excludes sugary drinks and honey. Dried fruit exceeds the upper bound
+and therefore still depends on the name list.
 
 The Dutch stems `ei` (egg) and `vis` (fish) match at a word start only, so
-`protein` and `provisions` do not trigger the protein branch.
+`protein` and `provisions` do not trigger the protein rules.
 
-### Plant dairy
+### Plant-based drinks and products
 
-Rule 1 runs ahead of the fat and dairy rules, which both win outright, because
-every plant-drink name contains one of their keywords: "almond" inside "almond
-milk", "milk" inside "oat milk". Ordered the other way, a sweetened almond drink
-matched the nut list and its carbohydrate went uncounted.
+Rule 1 precedes the fat and dairy rules, either of which would otherwise win
+outright, since every plant-based drink name contains one of their keywords:
+"almond" within "almond milk", "milk" within "oat milk". In the reverse order, a
+sweetened almond drink matched the nut list and its carbohydrate went uncounted.
 
-**No plant drink counts as a milk exchange, soy included.** The 2007 list
-settles this in its Dairy-Like Foods section, which counts a cup of plain rice
-drink as "1 carbohydrate" and a cup of plain soy milk as "1 carbohydrate and
-1 fat". Where the list means a milk exchange it writes one, as it does two
-entries above for chocolate milk: "1 fat-free milk and 1 carbohydrate". So a
-plant drink is counted on the carbohydrate it carries, and its protein and fat
-fall out in the later stages instead of being absorbed into a milk exchange.
-An unsweetened soy drink therefore comes out as carbohydrate plus a protein
-exchange, which is closer to what is in it than half a milk exchange would be.
+**No plant-based drink counts as a milk exchange.** The 2019 list
+places these products within Milk and Milk Substitutes and counts them in carb and
+fat choices. CarbX implements the same decision. A plant-based drink is counted on the
+carbohydrate it contains, and its protein and fat remain for the later stages
+rather than absorbed into a milk exchange. An unsweetened soy drink therefore
+yields carbohydrate plus a protein exchange.
 
-This is worth knowing if you expected soy to behave as a dairy swap. It is a
-substitute in the kitchen, and the exchange list still does not count it as one.
+Two names are excluded deliberately. `coconut milk` is not a plant-based drink for these purposes, so tinned coconut milk at 21 g of fat remains on the fat list;
+`coconut drink` is one. An unsweetened almond drink carries too little
+carbohydrate to satisfy rule 1 and too little protein for rule 1b, so it falls
+through to the composition rules and is counted on fat alone: at 1.1 g of fat per
+100 ml, a 250 ml glass gives half a fat exchange and no carbohydrate.
 
-Two deliberate exclusions. `coconut milk` is not a plant-drink name, so canned
-coconut milk at 21 g of fat stays on the fat list where it belongs; `coconut
-drink` is. An unsweetened almond drink carries so little of anything that it
-falls through to the composition rules and rounds away to a free food, which is
-what it is.
+**Plant-based yoghurts and creams** occupy the same list as the drinks and receive the
+same treatment, with one additional exchange. A plain soy yoghurt contains roughly
+1 g of carbohydrate against 4 g of protein, which satisfies the vegetable rule;
+without its name it was classified as a vegetable. Below 2 g of carbohydrate with
+protein present, a plant-based product counts as protein.
 
-Yoghurts and creams are in the same list as the drinks, since the 2007 list
-treats the whole Dairy-Like Foods category the same way. One extra branch
-handles them: a plain soy yoghurt carries about 1 g of carbohydrate against 4 g
-of protein, which satisfies the vegetable rule, so without the name it was
-counted as a vegetable. Under 2 g of carbohydrate with protein present, plant
-dairy counts as protein.
+Names are the full compound, `havermelk` rather than `haver`, so that the
+longest-match ranking retains oats, rice and almonds on their own lists.
 
-Names are the full compound, `havermelk` rather than `haver`, so the
-longest-match ranking keeps oats, rice and almonds themselves on their own
-lists.
+**Plant-based protein sources.** Tofu, tempeh, seitan, falafel, hummus, edamame and the beans belong to the 2019 Plant-Based Protein list, which counts them as a carb choice plus a protein choice. The two stages of `decompose()` produce the same result. Coconut-oil cheese analogues are captured by rule 6 on composition alone.
 
-Other vegan foods do not need a rule of their own: tofu, tempeh and seitan are
-on the protein list, falafel, hummus and edamame on the starch list beside the
-other legumes, and coconut-oil cheese analogues are caught by rule 6 on
-composition alone.
-
-The sweets list used to live inside the starch keyword list, since both carry
-15 g of carbohydrate. They are separate now, because they do not carry the same
-protein and fat: a starch exchange is charged 3 g of protein and 1 g of fat,
-which a soft drink or a spoon of honey plainly does not have. Membership
-follows the 2007 list, so bread, pancakes, waffles and croissants stay on
-starch while doughnuts, muffins and sweet rolls do not. Known gap: sweets are
-reached by name, so a dessert worded outside the keyword lists still falls to
-starch.
+**Sweets.** A starch exchange contains 3 g of protein and 1 g of fat. Neither is present in a soft drink or a spoonful of honey.
+Bread, pancakes, waffles and cornbread remain on starch; brownies, cake, cookies and pie do not. Sweets are reached by name,
+so a dessert worded outside the keyword lists is still classified as starch.
 
 ## Label parser
 
-`parseNutritionText()` finds a keyword in one of five languages, then takes the
-first number within 15 non-digit characters after it, accepting comma or point
-decimals. English, Dutch, German, French and Greek, including both `fibre` and
-`fiber`. Ingredients run from the first ingredients heading to the next blank
-line, whitespace-collapsed, truncated at 800 characters.
+`parseNutritionText()` locates a keyword in one of five languages and then takes
+the first number within 15 non-digit characters after it. Comma and point decimals
+are both accepted. English, Dutch, German, French and Greek, including both
+`fibre` and `fiber`. The ingredients run from the first ingredients heading to the
+next blank line, whitespace collapsed, truncated at 800 characters.
 
-Basis detection reports `100ml`, `100g` or `serving`, preferring per-100 ml, and
-defaults to `100g`. It reports only and never converts, so a per-serving label
-needs converting by hand.
+Basis detection reports `100ml`, `100g` or `serving`, preferring per 100 ml, and
+defaults to `100g`. It reports and never converts, so a per-serving label requires
+manual conversion.
 
-Each field takes the first match in the document, so a two-column label printing
-per-100 g beside per-serving can take the wrong column.
+Each field takes the first match in the document. A two-column label printing per
+100 g beside per serving may therefore take the wrong column.
 
-**OCR** is [tesseract.js](https://github.com/naptha/tesseract.js) 7, defaulting
-to `eng+nld+deu+fra+ell` and selectable per language. Recognition is local, but
-the library pulls its worker script, wasm core and language data from public
-CDNs on first use, then caches them. Output goes through the same parser.
+**OCR** is [tesseract.js](https://github.com/naptha/tesseract.js) 7, defaulting to
+`eng+nld+deu+fra+ell` and selectable per language. Recognition is local, though
+the library retrieves its worker script, wasm core and language data from public
+CDNs on first use and caches them thereafter. Its output is read by the same
+parser.
 
 **Open Food Facts** queries `{cc}.openfoodfacts.org/cgi/search.pl` for up to 20
-products across the world, Netherlands, Greece, Belgium, Germany and France
-databases. Where salt is missing but sodium is present, salt is derived as
+products, across the world, Netherlands, Greece, Belgium, Germany and France
+databases. Where salt is absent but sodium present, salt is derived as
 sodium × 2.5.
 
 ## Additive scan
@@ -225,180 +251,144 @@ regex, then deduplicates.
 | Sodium      | 250, 251, 252, 262, 281, 500, 621, 627, 631                              |
 | Added sugar | none, this category is name-only                                         |
 
-Additive names are matched in all five languages the parser reads. E-numbers
-carry no language, so they match wherever they appear.
+Additive names are matched in all five languages the parser reads. E-numbers carry
+no language and match wherever they appear.
 
 `E4500` does not match `E450`, and a bare number without an `E` prefix does not
 match at all.
 
 ## Flags
 
-
 | Item          | Warning                   | Alert        |
 | ------------- | ------------------------- | ------------ |
 | Sodium        | above 250 mg              | above 500 mg |
 | Sugars        | above 15 g                |              |
-| Fibre         | under 3 g, and only when the label declared it and the portion carries at least 8 g of carbohydrate | |
+| Fibre         | under 3 g, and only when the label declared it and the portion contains at least 8 g of carbohydrate | |
 | Saturated fat | above 5 g                 |              |
 | Potassium     | above 200 mg              |              |
 | Phosphorus    | above 12 mg per g protein |              |
 | Energy drift  | above 10% either way      |              |
 
-Potassium and phosphorus, and the phosphate and potassium additive scans, are
-behind a **Kidney diet** switch that is off by default. Those two minerals are
-what a renal diet turns on and are noise to everyone else; sodium and added
-sugar are scanned either way.
+Potassium and phosphorus, together with the phosphate and potassium additive
+scans, are governed by a **CKD diet** switch that is off by default. Those two
+minerals are the concern of a renal diet and noise to everyone else. Sodium and
+added sugar are scanned regardless.
 
-A blank field is unknown, not zero. Potassium, phosphorus and fibre all report
-`n/s` when the label omits them, and no flag fires on a value that was never
-declared. This is why olive oil is not reported as low in fibre.
+The fibre flag is confined to the detail view.
+The simple view shows only the flags that alter a decision.
 
-Sodium comes from salt at 400 mg/g. Sugars are total, not free, because that
-is what the declaration gives. Potassium carries the renal tiers: low below 100 mg, medium 100 to 200,
-high above. Phosphorus is shown per g of protein, since the ratio rather than
-the absolute figure is what marks a food carrying additive phosphorus.
+A blank field means unknown, not zero. Potassium, phosphorus and fibre report
+`n/s` where the label omits them, and no flag fires on a value that was never
+declared. Olive oil is consequently not reported as low in fibre.
+
+Sodium is derived from salt at 400 mg/g. Sugars are total rather than free, since
+total is what the declaration provides. Potassium has tiers in KD: low
+below 100 mg, medium 100 to 200, high above that. Phosphorus is expressed per gram
+of protein, since the ratio rather than the absolute figure identifies a food
+carrying additive phosphorus.
 
 ## Limitations
 
-- **Potassium and phosphorus when the label omits them.** Neither is mandatory
-  in the EU or US. CarbX reports `n/s` and does not estimate. Absence says
-  nothing about additive load, which is what the ingredient scan is for.
-- **Additives worded outside its lists.** Coverage is the regexes in `SCANS`.
-- **Anything it has not been given.** No food database, no intake tracking, no
-  history.
+- **Potassium and phosphorus where the label omits them.** Neither is mandatory in
+  the EU or the US. CarbX reports `n/s` and does not estimate.
+- **Additives worded outside its lists.** Coverage is the regular expressions (regex) in `SCANS`.
+- **OCR accuracy varies** with the photograph
+- **Open Food Facts is crowd-sourced** and unverified.
 
-OCR accuracy varies with photo quality, and Open Food Facts is crowd-sourced and
-unverified. Check parsed figures against the pack.
+Verify the figures against the pack.
 
 ## Validation
 
-Unit tests show the code does what it was told to do. They say nothing about
-whether the exchanges are the right ones. [validation/VALIDATION.md](validation/VALIDATION.md)
-is the other half: twenty real supermarket products, Greek and Dutch, with
-barcodes, worked through against the method as written down here. The recount
-in `validation/build.mjs` is a separate transcription of those stages and
-does not call `decompose()`, so the two agreeing is evidence the implementation
-matches its own description.
+Unit tests establish that the code implements its purpose. They do not
+establish that the specification produces the right exchanges.
+[validation/VALIDATION.md](validation/VALIDATION.md) covers the second question:
+twenty Greek and Dutch supermarket products, barcodes given, each run through
+`decompose()` and, independently, through `validation/build.mjs`, which
+reimplements the stages documented above and never calls `decompose()`.
+Agreement between the two is evidence that the implementation matches this
+README. Per product the file records the classification and its route, both
+outputs, and the energy cost of rounding to half exchanges. Regenerate with
+`node validation/build.mjs`.
 
-The first run of it found two classification failures, both now fixed and both
-covered by tests: halloumi was in the keyword list in Latin script only, so a
-pack labelled `χαλούμι` fell through to starch, and a coconut-oil imitation
-cheese reached the starch default because the fat rule required under 5 g of
-carbohydrate. Regenerate with `node validation/build.mjs`.
+The first run surfaced two classification defects, both since fixed and now under
+test: halloumi was listed in Latin script only, so a pack labelled `χαλούμι`
+reached the starch default, and a coconut-oil cheese analogue reached it too
+because the fat rule required carbohydrate under 5 g.
 
-## References
+## Sources
 
-The reference table and the thresholds come from the following. Where CarbX
-departs from a source, or where a source is contested, it says so.
+The exchange table and every threshold derive from the works listed under
+[References](#references). Departures are stated.
 
-**Exchange lists.** *Choose Your Foods: Exchange Lists for Diabetes*, American
-Diabetes Association and American Dietetic Association, Chicago and Alexandria
-VA, 2007. Its food-list table is what CarbX implements, value for value:
+**Food lists.** The nutrient chart of the 2019 Academy of Nutrition and Dietetics
+and American Diabetes Association food lists [1] is implemented:
 
 | List | CHO g | Protein g | Fat g | kcal |
 | --- | --- | --- | --- | --- |
-| Starch | 15 | 0-3 | 0-1 | 80 |
+| Starch | 15 | 3 | 1 | 80 |
 | Fruits | 15 | - | - | 60 |
-| Milk, fat-free or 1% | 12 | 8 | 0-3 | 100 |
-| Milk, reduced fat 2% | 12 | 8 | 5 | 130 |
-| Milk, whole | 12 | 8 | 8 | 150 |
-| Sweets, desserts, other carbohydrates | 15 | varies | varies | varies |
+| Milk, fat-free or low-fat 1% | 12 | 8 | 0-3 | 100 |
+| Milk, reduced fat 2% | 12 | 8 | 5 | 120 |
+| Milk, whole | 12 | 8 | 8 | 160 |
 | Nonstarchy vegetables | 5 | 2 | - | 25 |
-| Meat, lean | - | 7 | 0-3 | 45 |
-| Meat, medium fat | - | 7 | 4-7 | 75 |
-| Meat, high fat | - | 7 | 8 or more | 100 |
+| Sweets, desserts and other carbohydrates | 15 | varies | varies | varies |
+| Protein, lean | - | 7 | 2 | 45 |
+| Protein, medium fat | - | 7 | 5 | 75 |
+| Protein, high fat | - | 7 | 8 | 100 |
+| Protein, plant-based | varies | 7 | varies | varies |
 | Fats | - | - | 5 | 45 |
 
-Two things follow from the ranges. Where the list gives one, CarbX takes the
-upper bound as the exchange's nominal figure: a starch exchange is charged 3 g
-of protein and 1 g of fat. And the protein tiers are the list's own fat bands,
-0-3 g lean, 4-7 g medium, 8 g or more high, applied to the fat per exchange the
-label actually declares rather than to the list's nominal figure. The milk
-variants work the same way.
+The nominal fat per protein exchange is the list's own 2, 5 and 8 g. The cut
+points selecting between the three tiers, 3 g and 7 g of declared fat, are
+CarbX's own and correspond to the bands published in the earlier edition. They
+are applied to the fat the label declares rather than to the nominal figure, and
+the milk variants are treated identically. A sweets exchange is 15 g of
+carbohydrate at about 70 kcal; the list specifies neither protein nor fat for it
+[1], so CarbX charges neither.
 
-A later edition exists, retitled *Choose Your Foods: Food Lists for Diabetes*,
-5th edition, 2019. CarbX follows the 2007 table above; a reader working from
-the newer edition should check the two agree before relying on the output.
+**Carbohydrate unit.** 15 g is the US convention [1], 10 g the Dutch
+koolhydraateenheid. Only the carbohydrate column scales, by `unit / 15`.
 
-**Carbohydrate conventions.** The 15 g unit is the US convention above, 10 g
-the Dutch koolhydraateenheid. Only the carbohydrate column scales, by
-`unit / 15`; a milk exchange carries 8 g of protein under every convention.
+**Fibre.** Total carbohydrate is counted, with no deduction for fibre. The list
+prescribes dividing declared total carbohydrate by 15 and notes that the total
+already includes starches, sugars, sugar alcohols and dietary fibre [1]; its
+fibre marker identifies a good source at about 3 g per choice and an excellent
+source at 5 g or more. The American Diabetes Association holds that "net carbs"
+has no legal definition, is not used by the FDA and is not recognised by the
+association [2]. An earlier version of CarbX deducted fibre above 5 g per portion;
+it was removed for want of a source supporting it.
 
-**Fibre.** Total carbohydrate is what gets counted. Nothing is netted off for
-fibre. The 2007 exchange list contains no fibre-subtraction rule, its only
-fibre marker flagging a food as a good source at more than 3 g per serving, and
-the American Diabetes Association states that terms like "net carbs" are not
-defined by the FDA and that it does not recommend their use. An earlier version
-of CarbX subtracted fibre above 5 g per portion; it was removed because nothing
-supported it.
+**Sodium.** CarbX warns above 250 mg and alerts above 500 mg per portion. For
+comparison, the list marks a food high in sodium at 480 mg or more per choice and
+a combination main dish at more than 600 mg [1]. Sodium is derived from declared
+salt at 400 mg/g, the inverse of the EU conversion factor salt = sodium x 2.5
+[3]. Open Food Facts records giving sodium but no salt are converted the same way.
 
-**Sodium.** CarbX warns above 250 mg and alerts above 500 mg of sodium per
-portion. For comparison, the 2007 list marks a food as high in sodium at 480 mg
-or more per serving.
+**Phosphorus.** Reported per gram of protein, since the ratio rather than the
+absolute figure identifies a food carrying additive phosphorus. Absorption is
+around 90% for inorganic additive phosphorus against 40 to 60% for organic
+phosphorus in whole foods [4]. In haemodialysis patients, mortality rises at
+phosphorus-to-protein ratios of 14 mg/g and above, against a reference band of 12
+to under 14 [5]. CarbX flags above 12 mg/g, the conservative end of that evidence
+rather than its centre.
 
-**Salt and sodium.** Sodium is derived from declared salt at 400 mg per gram,
-the inverse of the EU conversion factor: salt equivalent = sodium × 2.5,
-Regulation (EU) No 1169/2011, Annex I. Where Open Food Facts gives sodium but
-no salt, salt is derived the same way.
+**Word lists.** The group keywords in `src/lib/keywords.js` follow the group
+definitions of the exchange table [1]. Product names were taken from the
+national food composition and exchange tables: NEVO for Dutch [7], the German
+Austauschtabellen [8] and Ciqual for French [9]. The Greek terms come from the
+Greek Diabetic Association's exchange guide, food groups 1 to 6 [10], and the
+German terms were additionally checked against Open Food Facts category names
+[11].
 
-**Phosphorus.** Phosphorus is reported per gram of protein because the ratio,
-not the absolute figure, marks a food carrying additive phosphorus.
-Kalantar-Zadeh K, Gutekunst L, Mehrotra R, et al. Understanding sources of
-dietary phosphorus in the treatment of patients with chronic kidney disease.
-*Clin J Am Soc Nephrol* 2010;5:519-530, gives the absorption figures the app
-cites: around 90% for inorganic additive phosphorus against 40 to 60% for
-organic phosphorus in whole foods. Noori N, Kalantar-Zadeh K, Kovesdy CP, et al.
-Association of dietary phosphorus intake and phosphorus to protein ratio with
-mortality in hemodialysis patients. *Clin J Am Soc Nephrol* 2010;5(4):683-692,
-found mortality rising at ratios of 14 mg/g and above, against a reference band
-of 12 to under 14. CarbX flags above 12 mg/g, which is the conservative end of
-that evidence rather than its centre.
+**Additive scan.** The E-numbers scanned are those of the EU list of authorised
+food additives [12]; the numbers themselves are listed under
+[Additive scan](#additive-scan). Additive names are matched in the five
+languages the parser reads.
 
-**Open Food Facts.** Every nutriment field ending in `_100g` is returned in
-grams, energy excepted: "fields that end with `_100g` correspond to the amount
-of a nutriment (in g, or kJ for energy) for 100 g or 100 ml of product"
-([data-fields.txt](https://world.openfoodfacts.org/data/data-fields.txt)).
-Potassium and phosphorus are converted to milligrams on import; salt is already
-in grams. The database is crowd-sourced and unverified.
-
-## Interface languages
-
-English and Greek, switched by the `en ελ` links in the header. The choice is
-remembered in the browser and, on a first visit, taken from the browser's own
-language.
-
-`src/i18n.js` holds both dictionaries. Nothing in the interface holds a literal
-string: every label, help note, flag sentence and classification reason is
-looked up by key, and `src/lib/i18n.test.js` fails when a key exists in one
-language and not the other, when a placeholder such as `{n}` appears in one
-language and not the other, or when the classifier starts producing an id the
-dictionary has never heard of. A half-translated release cannot ship.
-
-The label parser is unaffected: it reads five languages whichever language the
-interface is in. The switch changes what CarbX says, not what it can read.
-
-The Greek was drafted alongside the English and has not been reviewed by a
-second Greek dietitian. The classification sentences are the ones to read
-first, since they explain clinical reasoning rather than naming a control. An
-exchange is *ισοδύναμο*, never a calque such as *ανταλλαγή*; a food group is
-*ομάδα τροφίμων*.
-
-## Typography
-
-Source Sans 3 and Source Code Pro, both SIL Open Font License, self-hosted in
-`public/fonts`. Self-hosted rather than loaded from a font CDN for two reasons:
-the page renders identically on every device instead of falling back to whatever
-the visitor's operating system supplies, and no visitor's IP address reaches a
-third party, which a tool advertising no analytics has to mean literally.
-
-Latin, Latin Extended and Greek are shipped; Cyrillic and Vietnamese are not,
-since the label parser reads English, Dutch, German, French and Greek. The faces
-are split by `unicode-range`, so a browser fetches the Greek file only when Greek
-is actually on the page: 188 KB on disk, around 40 KB on a typical first load.
-
-`npm run fonts` copies the WOFF2 files out of the fontsource packages and
-regenerates `src/fonts.css` from those packages' own `unicode-range`
-declarations, so the ranges cannot drift from the files they describe.
+**Open Food Facts.** Nutriment fields ending in `_100g` give the amount per 100 g
+or 100 ml, in grams except energy [6]. Potassium and phosphorus are converted to
+milligrams on import; salt already arrives in grams. The database is
+crowd-sourced and unverified.
 
 ## Development
 
@@ -407,17 +397,51 @@ npm install
 npm run dev
 ```
 
-`npm test` runs 267 vitest cases\
- `npm run lint` runs oxlint\
- `npm run build`
-writes a static site to `dist/`.
+`npm test` runs 353 vitest cases\
+`npm run lint` runs oxlint\
+`npm run build` writes a static site to `dist/`.
 
-`src/lib/exchange.js` holds the logic. 
-`src/App.jsx` is the interfaces and styles.
+`src/lib/exchange.js` holds the logic, `src/lib/keywords.js` the word lists,
+`src/i18n.js` the dictionaries and `src/App.jsx` the interface and its styles.
 
 React 19, Vite 6, tesseract.js 7, vitest 3, oxlint.
 
 Pushing to `main` lints, tests, builds and publishes the site to GitHub Pages.
+
+## References
+
+1. Academy of Nutrition and Dietetics, American Diabetes Association. *Choose
+   Your Foods: Food Lists for Weight Management*. Chicago: Academy of Nutrition
+   and Dietetics; 2019. ISBN 978-1-58040-739-7.
+2. American Diabetes Association. Get to know carbs.
+   <https://diabetes.org/food-nutrition/understanding-carbs/get-to-know-carbs>
+3. Regulation (EU) No 1169/2011 of the European Parliament and of the Council of
+   25 October 2011 on the provision of food information to consumers, Annex I.
+   *Official Journal of the European Union* 2011;L304:18-63.
+4. Kalantar-Zadeh K, Gutekunst L, Mehrotra R, et al. Understanding sources of
+   dietary phosphorus in the treatment of patients with chronic kidney disease.
+   *Clin J Am Soc Nephrol* 2010;5(3):519-530.
+5. Noori N, Kalantar-Zadeh K, Kovesdy CP, et al. Association of dietary
+   phosphorus intake and phosphorus to protein ratio with mortality in
+   hemodialysis patients. *Clin J Am Soc Nephrol* 2010;5(4):683-692.
+6. Open Food Facts. Data fields.
+   <https://world.openfoodfacts.org/data/data-fields.txt>
+7. Rijksinstituut voor Volksgezondheid en Milieu. *NEVO-online versie 2025/9.0*,
+   Nederlands Voedingsstoffenbestand. Bilthoven: RIVM; 2025.
+   <https://www.rivm.nl/documenten/nevo-online-versie>
+8. Verband der Diabetes-Beratungs- und Schulungsberufe Deutschland.
+   *Kohlenhydrat-Austauschtabelle*; 2017. Standl E, Mehnert H.
+   *Fett-Austauschtabelle*, in *Das große TRIAS-Handbuch für Diabetiker*.
+   Both published by diabetesDE at
+   <https://www.diabetesde.org/austauschtabellen>
+9. Ciqual. *Ciqual French food composition table 2025*, version 1 [dataset].
+   Maisons-Alfort: Anses; 2025. <https://doi.org/10.5281/zenodo.17550133>
+10. Ελληνική Διαβητολογική Εταιρεία (Greek Diabetic Association). *Οδηγός
+    διατροφής για τη ρύθμιση του διαβήτη*: ισοδύναμα τροφών, ομάδες 1-6.
+11. Open Food Facts. Kategorien. <https://de.openfoodfacts.org/kategorien>
+12. Regulation (EC) No 1333/2008 of the European Parliament and of the Council of
+    16 December 2008 on food additives, Annex II. *Official Journal of the
+    European Union* 2008;L354:16-33.
 
 ## License
 

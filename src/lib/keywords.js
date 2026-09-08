@@ -26,9 +26,11 @@
 // category nobody plans against. The sweet group stays available as a manual
 // override in the interface.
 //
-// Sources: the Greek terms come from the EDE guide (Οδηγός διατροφής για τη
-// ρύθμιση του διαβήτη, Ισοδύναμα τροφών, groups 1 to 6) and George's own
-// exchange sheet. The German terms were checked against Open Food Facts
+// Sources: product names come from the national tables, NEVO 2025 for Dutch,
+// the German Austauschtabellen and Ciqual for French. The Greek terms come from
+// the Greek Diabetic Association guide (Οδηγός διατροφής για τη ρύθμιση του
+// διαβήτη, Ισοδύναμα τροφών, groups 1 to 6). The German terms were also
+// checked against Open Food Facts
 // category names (de.openfoodfacts.org/kategorien). English, Dutch and French
 // follow the same group definitions; the Open Food Facts listings for those
 // two languages refuse automated access, so they were not machine-checked.

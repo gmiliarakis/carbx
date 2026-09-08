@@ -197,23 +197,23 @@ export function inferGroupWithReason(p, name = "", opts = {}) {
     && (p.fat < 12 || proPerCho >= milkRatio * 0.75);
   const milkPortion = (p.cho > 2 && p.pro > 2) || portionPro >= groups(unit).milk.pro;
 
-  // Plant dairy wears a dairy name without being dairy. The 2007 list settles
-  // where it goes: its Dairy-Like Foods section counts a cup of rice drink as
-  // "1 carbohydrate" and a cup of plain soy milk as "1 carbohydrate + 1 fat",
-  // never as a milk exchange, which it writes out where it means one ("1
-  // fat-free milk" for chocolate milk two lines above). So every plant drink,
+  // A plant-based drink wears a dairy name without being dairy. The 2019 list settles
+  // where it goes: inside Milk and Milk Substitutes it counts a cup of plain
+  // rice drink as "1 carb" and a cup of plain soy drink as "1 carb + 1 fat",
+  // never as a milk choice, which it writes out where it means one ("1
+  // fat-free milk + 1 carb" for chocolate milk). So every plant drink,
   // soy included, is counted on the carbohydrate it carries, and its protein
   // and fat fall out in the later stages rather than being absorbed by a milk
-  // exchange. An unsweetened drink carrying almost nothing falls through to the
-  // composition rules, where it lands as a free food.
+  // exchange. An unsweetened drink carrying almost no carbohydrate falls through
+  // to the composition rules and is counted on its fat alone.
   if (score("plantDairy") > 0) {
     if (p.cho >= 2)
-      return byName("starch", "it is a plant dairy food, which the exchange list counts on the carbohydrate it carries rather than as a milk exchange", "plantDairyCarb");
+      return byName("starch", "it is a plant-based drink or product; the exchange list counts it on the carbohydrate it carries rather than as a milk exchange", "plantDairyCarb");
     // A plain soy yoghurt carries almost no carbohydrate and several grams of
     // protein. Without this it reached the vegetable rule, which only asks for
     // low carbohydrate and some protein alongside it.
     if (p.pro >= 2)
-      return byName("protein-only", "it is a plant dairy food carrying protein and almost no carbohydrate, so it counts as protein rather than as a milk exchange", "plantDairyProtein");
+      return byName("protein-only", "it is a plant-based drink or product carrying protein and almost no carbohydrate, so it counts as protein rather than as a milk exchange", "plantDairyProtein");
   }
 
   // Fat first, and it wins outright over a longer name from another group,
