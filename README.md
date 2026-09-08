@@ -13,12 +13,6 @@ characteristics". The CKD diet switch is on, so the ingredient scan has
 flagged the dipotassium phosphate in it as an additive phosphate
 source.](docs/carbx.png)
 
-✅ no account needed\
-✅ no backend\
-✅ no API keys\
-✅ no data stored\
-✅ no analytics
-
 - **Rule-based.** Every group and every exchange comes from a published
   exchange list and a rule written out in the source. Nothing is inferred by a
   model, and every result names the rule that produced it.
@@ -33,6 +27,12 @@ source.](docs/carbx.png)
 - **Light and fast.** A static site with no backend. Results are instant and
   photo recognition runs on your own device.
 - **Free and open source.** (MIT license)
+
+✅ No account needed\
+✅ No backend\
+✅ No API keys\
+✅ No data stored\
+✅ No analytics
 
 ## Contents
 
