@@ -19,17 +19,16 @@ source.](docs/carbx.png)
 ✅ no data stored\
 ✅ no analytics
 
-- **Rule-based, not LLM.** Every group and every exchange comes from a published
+- **Rule-based.** Every group and every exchange comes from a published
   exchange list and a rule written out in the source. Nothing is inferred by a
   model, and every result names the rule that produced it.
 - **Five label languages.** Labels typed, pasted or photographed are read in
   English, Dutch, German, French and Greek.
 - **Two UI languages.** English and Greek.
-- **Two carbohydrate conventions, one switch.** 15 g of carbohydrate per
+- **Two carbohydrate conventions.** 15 g of carbohydrate per
   exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
-- **Kidney diet flags.** One switch adds potassium and phosphorus, reports
-  phosphorus per gram of protein, and scans the ingredients for phosphate and
-  potassium additives (off by default).
+- **CKD diet flags.** One switch adds K and P, reports K per g of protein,
+  and scans the ingredients for phosphate and K additives (off by default).
 - **Simple or detailed view.** View customisation for individuals or dietitians.
 - **Light and fast.** A static site with no backend. Results are instant and
   photo recognition runs on your own device.
