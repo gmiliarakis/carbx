@@ -19,7 +19,7 @@ source.](docs/carbx.png)
 ✅ no data stored\
 ✅ no analytics
 
-- **Rules, not LLM.** Every group and every exchange comes from a published
+- **Rule-based, not LLM.** Every group and every exchange comes from a published
   exchange list and a rule written out in the source. Nothing is inferred by a
   model, and every result names the rule that produced it.
 - **Five label languages.** Labels typed, pasted or photographed are read in
