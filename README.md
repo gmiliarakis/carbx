@@ -19,41 +19,36 @@ source.](docs/carbx.png)
 ✅ no data stored\
 ✅ no analytics
 
-- **Rules, not AI.** Every group and every exchange comes from a published
+- **Rules, not LLM.** Every group and every exchange comes from a published
   exchange list and a rule written out in the source. Nothing is inferred by a
   model, and every result names the rule that produced it.
 - **Five label languages.** Labels typed, pasted or photographed are read in
-  English, Dutch, German, French and Greek. The additive scan matches additive
-  names in all five.
-- **Two interface languages.** English and Greek.
-- **Two carbohydrate conventions, one button.** 15 g of carbohydrate per
-  exchange for the US convention, 10 g for the Dutch koolhydraateenheid. The
-  switch redefines the carbohydrate unit and nothing else, so a food keeps its
-  group, its protein and fat exchanges and its flags either way.
+  English, Dutch, German, French and Greek.
+- **Two UI languages.** English and Greek.
+- **Two carbohydrate conventions, one switch.** 15 g of carbohydrate per
+  exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
 - **Kidney diet flags.** One switch adds potassium and phosphorus, reports
   phosphorus per gram of protein, and scans the ingredients for phosphate and
-  potassium additives. Off by default, so it stays out of the way of everyone
-  else.
-- **Simple or detailed view.** Simple gives the exchanges and anything flagged.
-  Detail adds every value behind those flags and the ingredient scan.
+  potassium additives (off by default).
+- **Simple or detailed view.** View customisation for individuals or dietitians.
 - **Light and fast.** A static site with no backend. Results are instant and
   photo recognition runs on your own device.
-- **Free and open source.** MIT licensed.
+- **Free and open source.** (MIT license)
 
 ## Contents
 
-[Intended use](#intended-use) ·
-[Usage](#usage) ·
-[Terms](#terms) ·
-[Reasoning](#reasoning) ·
-[Classification](#classification) ·
-[Label parser](#label-parser) ·
-[Additive scan](#additive-scan) ·
-[Flags](#flags) ·
-[Limitations](#limitations) ·
-[Validation](#validation) ·
-[Sources](#sources) ·
-[Development](#development) ·
+[Intended use](#intended-use) \
+[Usage](#usage) \
+[Terms](#terms) \
+[Reasoning](#reasoning) \
+[Classification](#classification) \
+[Label parser](#label-parser) \
+[Additive scan](#additive-scan) \
+[Flags](#flags) \
+[Limitations](#limitations) \
+[Validation](#validation) \
+[Sources](#sources) \
+[Development](#development) \
 [References](#references)
 
 Read the first three sections to use CarbX. The rest documents how it decides
@@ -83,7 +78,7 @@ iii. **Take photo of the label.** Recognition is local to your device.\
 iv. **Search Open Food Facts** by name, across the world, Dutch, Greek, Belgian,
 German and French databases.
 
-**2. Portion and convention.** Portion in grams, and the carbohydrate unit: 15 g
+**2. Portion and convention.** Enter portion in grams, and select the carbohydrate unit: 15 g
 per exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
 
 **3. Output**
@@ -94,8 +89,7 @@ per exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
     on rounding drift
 
 Carbohydrate, protein and fat are the only required fields. If you provide the ingredients
-list as well, CarbX scans it for phosphate, potassium, sodium and sugar
-additives.
+list as well, CarbX scans it for phosphate, potassium, sodium and sugar additives.
 
 Every result names the group the food was counted from and states whether its name
 or its figures determined that. The group is always overridable. Where rounding to
@@ -289,20 +283,19 @@ carrying additive phosphorus.
 
 ## Limitations
 
-- **Potassium and phosphorus where the label omits them.** Neither is mandatory in
-  the EU or the US. CarbX reports `n/s` and does not estimate.
-- **Additives worded outside its lists.** Coverage is the regular expressions (regex) in `SCANS`.
-- **OCR accuracy varies** with the photograph
-- **Open Food Facts is crowd-sourced** and unverified.
+- CarbX reports `n/s` and does not estimate K and P if the label omits them.
+- Additives worded outside its lists will not be recognised. Coverage is the regular expressions (regex) in `SCANS`.
+- OCR accuracy varies with photograph quality.
+- Open Food Facts is crowd-sourced and unverified.
 
 Verify the figures against the pack.
 
 ## Validation
 
-Unit tests establish that the code implements its purpose. They do not
+Unit tests establish that the code implements its specification. They do not
 establish that the specification produces the right exchanges.
-[validation/VALIDATION.md](validation/VALIDATION.md) covers the second question:
-twenty Greek and Dutch supermarket products, barcodes given, each run through
+[validation/VALIDATION.md](validation/VALIDATION.md) address is this.
+Twenty Greek and Dutch supermarket products, each run through
 `decompose()` and, independently, through `validation/build.mjs`, which
 reimplements the stages documented above and never calls `decompose()`.
 Agreement between the two is evidence that the implementation matches this
@@ -369,7 +362,7 @@ absolute figure identifies a food carrying additive phosphorus. Absorption is
 around 90% for inorganic additive phosphorus against 40 to 60% for organic
 phosphorus in whole foods [4]. In haemodialysis patients, mortality rises at
 phosphorus-to-protein ratios of 14 mg/g and above, against a reference band of 12
-to under 14 [5]. CarbX flags above 12 mg/g, the conservative end of that evidence
+to under 14 [5]. CarbX flags above 12 mg/g, the conservative boundary of that evidence
 rather than its centre.
 
 **Word lists.** The group keywords in `src/lib/keywords.js` follow the group
