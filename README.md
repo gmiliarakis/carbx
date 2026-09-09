@@ -21,8 +21,9 @@ source.](docs/carbx.png)
 - **Two UI languages.** English and Greek.
 - **Two carbohydrate conventions.** 15 g of carbohydrate per
   exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
-- **CKD diet flags.** One switch adds K and P, reports P per g of protein,
-  and scans the ingredients for phosphate and K additives (off by default).
+- **CKD diet flags.** One switch adds potassium (K) and phosphorus (P), reports
+  P per g of protein, and scans the ingredients for phosphate and K additives
+  (off by default).
 - **Simple or detailed view.** View customisation for individuals or dietitians.
 - **Light and fast.** A static site with no backend. Results are instant and
   photo recognition runs on your own device.
@@ -84,11 +85,11 @@ per exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
 
   - exchanges in the portion
   - grams of food per exchange
-  - flags on sodium, sugars, fibre, saturated fat, potassium and phosphorus, and
-    on rounding drift
+  - flags on sodium, sugars, fibre, saturated fat, K and P, and on rounding
+    drift
 
 Carbohydrate, protein and fat are the only required fields. If you provide the ingredients
-list as well, CarbX scans it for phosphate, potassium, sodium and sugar additives.
+list as well, CarbX scans it for phosphate, K, sodium and sugar additives.
 
 Every result names the group the food was counted from and states whether its name
 or its figures determined that. The group is always overridable. Where rounding to
@@ -271,24 +272,25 @@ match at all.
 | Phosphorus    | above 12 mg per g protein |              |
 | Energy drift  | above 10% either way      |              |
 
-Potassium and phosphorus, together with the phosphate and potassium additive
-scans, are governed by a **CKD diet** switch that is off by default. Those two
-minerals are the concern of a renal diet and noise to everyone else. Sodium and
+K and P, together with the phosphate and K additive scans, are governed by a
+**CKD diet** switch that is off by default. Those two minerals are the concern
+of a renal diet and noise to everyone else. Sodium and
 added sugar are scanned regardless.
 
 The fibre flag is confined to the detail view.
 The simple view shows only the flags that alter a decision.
 
-A blank field means unknown, not zero. Potassium, phosphorus and fibre report
+A blank field means unknown, not zero. K, P and fibre report
 `n/s` where the label omits them, and no flag fires on a value that was never
 declared. Olive oil is consequently not reported as low in fibre.
 
 Sugars are total rather than free, since total is what the declaration provides.
-Potassium has tiers in KD: low below 100 mg, medium 100 to 200, high above that.
+K has tiers in the CKD view: low below 100 mg, medium 100 to 200, high above
+that.
 
 ## Limitations
 
-- Potassium and phosphorus are often missing from labels. CarbX does not estimate them.
+- K and P are often missing from labels. CarbX does not estimate them.
 - Additives worded outside its lists will not be recognised. Coverage is the regular expressions (regex) in `SCANS`.
 - OCR accuracy varies with photograph quality.
 - Open Food Facts is crowd-sourced and unverified.
@@ -346,10 +348,10 @@ and a combination main dish at more than 600 mg [1]; the thresholds under
 400 mg/g, the inverse of the EU conversion factor salt = sodium x 2.5 [3].
 
 **Phosphorus.** Reported per gram of protein, since the ratio rather than the
-absolute figure identifies a food carrying additive phosphorus. Absorption is
-around 90% for inorganic additive phosphorus against 40 to 60% for organic
-phosphorus in whole foods [4]. In haemodialysis patients, mortality rises at
-phosphorus-to-protein ratios of 14 mg/g and above, against a reference band of 12
+absolute figure identifies a food carrying additive P. Absorption is around 90%
+for inorganic additive P against 40 to 60% for organic P in whole foods [4]. In
+haemodialysis patients, mortality rises at P-to-protein ratios of 14 mg/g and
+above, against a reference band of 12
 to under 14 [5]. CarbX flags above 12 mg/g, the conservative boundary of that evidence
 rather than its centre.
 
@@ -365,7 +367,7 @@ German terms were additionally checked against Open Food Facts category names
 are those of the EU list of authorised food additives [12].
 
 **Open Food Facts.** Nutriment fields ending in `_100g` give the amount per 100 g
-or 100 ml, in grams except energy [6]. Potassium and phosphorus are converted to
+or 100 ml, in grams except energy [6]. K and P are converted to
 milligrams on import; salt already arrives in grams.
 
 ## Development
