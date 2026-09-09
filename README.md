@@ -21,7 +21,7 @@ source.](docs/carbx.png)
 - **Two UI languages.** English and Greek.
 - **Two carbohydrate conventions.** 15 g of carbohydrate per
   exchange for the US convention, 10 g for the Dutch koolhydraateenheid.
-- **CKD diet flags.** One switch adds K and P, reports K per g of protein,
+- **CKD diet flags.** One switch adds K and P, reports P per g of protein,
   and scans the ingredients for phosphate and K additives (off by default).
 - **Simple or detailed view.** View customisation for individuals or dietitians.
 - **Light and fast.** A static site with no backend. Results are instant and
@@ -105,15 +105,24 @@ exchanges, 300 g each".\
 
 ## Reasoning
 
-The US reference system is implemented. Only the carbohydrate column scales, by `unit / 15`, so a single table serves both conventions.
+CarbX implements the nutrient chart of the 2019 US food lists [1], value for
+value. Only the carbohydrate column scales, by `unit / 15`, so one table serves
+both conventions.
 
-| Group                  | Carbohydrate g | Protein g | Fat g |
-| ---------------------- | ----- | --------- | ----- |
-| Starch                 | 15    | 3         | 1     |
-| Fruit                  | 15    | 0         | 0     |
-| Milk                   | 12    | 8         | 0     |
-| Non-starchy veg        | 5     | 2         | 0     |
-| Sweets and other carbs | 15    | 0         | 0     |
+| List | Carbohydrate g | Protein g | Fat g | kcal |
+| --- | --- | --- | --- | --- |
+| Starch | 15 | 3 | 1 | 80 |
+| Fruits | 15 | - | - | 60 |
+| Milk, fat-free or low-fat 1% | 12 | 8 | 0-3 | 100 |
+| Milk, reduced fat 2% | 12 | 8 | 5 | 120 |
+| Milk, whole | 12 | 8 | 8 | 160 |
+| Nonstarchy vegetables | 5 | 2 | - | 25 |
+| Sweets, desserts and other carbohydrates | 15 | varies | varies | varies |
+| Protein, lean | - | 7 | 2 | 45 |
+| Protein, medium fat | - | 7 | 5 | 75 |
+| Protein, high fat | - | 7 | 8 | 100 |
+| Protein, plant-based | varies | 7 | varies | varies |
+| Fats | - | - | 5 | 45 |
 
 `decompose()` proceeds in two stages, the second operating on the residue of the
 first.
@@ -274,15 +283,12 @@ A blank field means unknown, not zero. Potassium, phosphorus and fibre report
 `n/s` where the label omits them, and no flag fires on a value that was never
 declared. Olive oil is consequently not reported as low in fibre.
 
-Sodium is derived from salt at 400 mg/g. Sugars are total rather than free, since
-total is what the declaration provides. Potassium has tiers in KD: low
-below 100 mg, medium 100 to 200, high above that. Phosphorus is expressed per gram
-of protein, since the ratio rather than the absolute figure identifies a food
-carrying additive phosphorus.
+Sugars are total rather than free, since total is what the declaration provides.
+Potassium has tiers in KD: low below 100 mg, medium 100 to 200, high above that.
 
 ## Limitations
 
-- CarbX reports `n/s` and does not estimate K and P if the label omits them.
+- Potassium and phosphorus are often missing from labels. CarbX does not estimate them.
 - Additives worded outside its lists will not be recognised. Coverage is the regular expressions (regex) in `SCANS`.
 - OCR accuracy varies with photograph quality.
 - Open Food Facts is crowd-sourced and unverified.
@@ -293,7 +299,7 @@ Verify the figures against the pack.
 
 Unit tests establish that the code implements its specification. They do not
 establish that the specification produces the right exchanges.
-[validation/VALIDATION.md](validation/VALIDATION.md) address is this.
+[validation/VALIDATION.md](validation/VALIDATION.md) addresses this.
 Twenty Greek and Dutch supermarket products, each run through
 `decompose()` and, independently, through `validation/build.mjs`, which
 reimplements the stages documented above and never calls `decompose()`.
@@ -312,25 +318,9 @@ because the fat rule required carbohydrate under 5 g.
 The exchange table and every threshold derive from the works listed under
 [References](#references). Departures are stated.
 
-**Food lists.** The nutrient chart of the 2019 Academy of Nutrition and Dietetics
-and American Diabetes Association food lists [1] is implemented:
-
-| List | CHO g | Protein g | Fat g | kcal |
-| --- | --- | --- | --- | --- |
-| Starch | 15 | 3 | 1 | 80 |
-| Fruits | 15 | - | - | 60 |
-| Milk, fat-free or low-fat 1% | 12 | 8 | 0-3 | 100 |
-| Milk, reduced fat 2% | 12 | 8 | 5 | 120 |
-| Milk, whole | 12 | 8 | 8 | 160 |
-| Nonstarchy vegetables | 5 | 2 | - | 25 |
-| Sweets, desserts and other carbohydrates | 15 | varies | varies | varies |
-| Protein, lean | - | 7 | 2 | 45 |
-| Protein, medium fat | - | 7 | 5 | 75 |
-| Protein, high fat | - | 7 | 8 | 100 |
-| Protein, plant-based | varies | 7 | varies | varies |
-| Fats | - | - | 5 | 45 |
-
-The nominal fat per protein exchange is the list's own 2, 5 and 8 g. The cut
+**Food lists.** The chart under [Reasoning](#reasoning) is that of the 2019
+Academy of Nutrition and Dietetics and American Diabetes Association food lists
+[1]. The nominal fat per protein exchange is the list's own 2, 5 and 8 g. The cut
 points selecting between the three tiers, 3 g and 7 g of declared fat, are
 CarbX's own and correspond to the bands published in the earlier edition. They
 are applied to the fat the label declares rather than to the nominal figure, and
@@ -338,8 +328,8 @@ the milk variants are treated identically. A sweets exchange is 15 g of
 carbohydrate at about 70 kcal; the list specifies neither protein nor fat for it
 [1], so CarbX charges neither.
 
-**Carbohydrate unit.** 15 g is the US convention [1], 10 g the Dutch
-koolhydraateenheid. Only the carbohydrate column scales, by `unit / 15`.
+**Carbohydrate unit.** 15 g is the US convention [1]; 10 g is the Dutch
+koolhydraateenheid.
 
 **Fibre.** Total carbohydrate is counted, with no deduction for fibre. The list
 prescribes dividing declared total carbohydrate by 15 and notes that the total
@@ -350,11 +340,10 @@ has no legal definition, is not used by the FDA and is not recognised by the
 association [2]. An earlier version of CarbX deducted fibre above 5 g per portion;
 it was removed for want of a source supporting it.
 
-**Sodium.** CarbX warns above 250 mg and alerts above 500 mg per portion. For
-comparison, the list marks a food high in sodium at 480 mg or more per choice and
-a combination main dish at more than 600 mg [1]. Sodium is derived from declared
-salt at 400 mg/g, the inverse of the EU conversion factor salt = sodium x 2.5
-[3]. Open Food Facts records giving sodium but no salt are converted the same way.
+**Sodium.** The list marks a food high in sodium at 480 mg or more per choice
+and a combination main dish at more than 600 mg [1]; the thresholds under
+[Flags](#flags) sit below both. Sodium is derived from declared salt at
+400 mg/g, the inverse of the EU conversion factor salt = sodium x 2.5 [3].
 
 **Phosphorus.** Reported per gram of protein, since the ratio rather than the
 absolute figure identifies a food carrying additive phosphorus. Absorption is
@@ -372,15 +361,12 @@ Greek Diabetic Association's exchange guide, food groups 1 to 6 [10], and the
 German terms were additionally checked against Open Food Facts category names
 [11].
 
-**Additive scan.** The E-numbers scanned are those of the EU list of authorised
-food additives [12]; the numbers themselves are listed under
-[Additive scan](#additive-scan). Additive names are matched in the five
-languages the parser reads.
+**Additive scan.** The E-numbers listed under [Additive scan](#additive-scan)
+are those of the EU list of authorised food additives [12].
 
 **Open Food Facts.** Nutriment fields ending in `_100g` give the amount per 100 g
 or 100 ml, in grams except energy [6]. Potassium and phosphorus are converted to
-milligrams on import; salt already arrives in grams. The database is
-crowd-sourced and unverified.
+milligrams on import; salt already arrives in grams.
 
 ## Development
 
