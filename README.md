@@ -33,7 +33,10 @@ source.](docs/carbx.png)
 ✅ No backend\
 ✅ No API keys\
 ✅ No data stored\
-✅ No analytics
+✅ No cookies, no tracking, no personal data
+
+Page views are counted with [GoatCounter](https://www.goatcounter.com), which sets
+no cookies and stores no personal data. Nothing you enter is ever sent anywhere.
 
 ## Contents
 
@@ -422,6 +425,12 @@ Pushing to `main` lints, tests, builds and publishes the site to GitHub Pages.
 12. Regulation (EC) No 1333/2008 of the European Parliament and of the Council of
     16 December 2008 on food additives, Annex II. *Official Journal of the
     European Union* 2008;L354:16-33.
+
+## Support
+
+CarbX is free and will stay free. If it saves you time, you can support its
+upkeep through [GitHub Sponsors](https://github.com/sponsors/gmiliarakis) or
+[Ko-fi](https://ko-fi.com/gmiliarakis).
 
 ## License
 
