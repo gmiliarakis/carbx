@@ -31,12 +31,10 @@ source.](docs/carbx.png)
 
 ✅ No account needed\
 ✅ No backend\
-✅ No API keys\
 ✅ No data stored\
-✅ No cookies, no tracking, no personal data
+✅ No cookies or tracking
 
-Page views are counted with [GoatCounter](https://www.goatcounter.com), which sets
-no cookies and stores no personal data. Nothing you enter is ever sent anywhere.
+Page views are counted with [GoatCounter](https://www.goatcounter.com) which doesn't store cookies or personal data.
 
 ## Contents
 
